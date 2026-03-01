@@ -6,8 +6,6 @@ interface VoiceInputProps {
   onTranscript: (text: string) => void
 }
 
-type SpeechRecognitionType = typeof window extends { SpeechRecognition: infer T } ? T : any
-
 export default function VoiceInput({ onTranscript }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false)
   const [lang, setLang] = useState<'zh-CN' | 'en-US'>('zh-CN')
@@ -63,7 +61,6 @@ export default function VoiceInput({ onTranscript }: VoiceInputProps) {
     setIsListening(true)
   }, [isListening, lang, onTranscript])
 
-  // Stop and restart with new lang if currently listening
   const toggleLang = useCallback(() => {
     if (isListening) {
       recognitionRef.current?.stop()
@@ -75,12 +72,12 @@ export default function VoiceInput({ onTranscript }: VoiceInputProps) {
   if (!supported) return null
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       {/* Language toggle */}
       <button
         type="button"
         onClick={toggleLang}
-        className="text-xs text-gray-400 hover:text-gray-700 transition-colors px-1.5 py-0.5 rounded border border-gray-200 hover:border-gray-400"
+        className="text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors px-3 py-2 rounded-xl border border-gray-200 hover:border-gray-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
         title={lang === 'zh-CN' ? '切换到英文' : 'Switch to Chinese'}
       >
         {lang === 'zh-CN' ? '中' : 'EN'}
@@ -90,18 +87,17 @@ export default function VoiceInput({ onTranscript }: VoiceInputProps) {
       <button
         type="button"
         onClick={toggleListening}
-        className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+        className={`relative min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
           isListening
-            ? 'bg-red-50 text-red-500'
-            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
+            ? 'bg-red-50 text-red-500 border border-red-200'
+            : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700 border border-gray-200'
         }`}
         title={isListening ? '停止录音' : '语音输入'}
       >
-        {/* Pulsing dot when recording */}
         {isListening && (
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
         )}
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
           <rect x="5.5" y="1.5" width="5" height="9" rx="2.5" />
           <path d="M3 7.5a5 5 0 0 0 10 0" />
           <line x1="8" y1="12.5" x2="8" y2="14.5" />

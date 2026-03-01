@@ -136,14 +136,14 @@ export default function NewEntry() {
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="text-sm text-gray-400 hover:text-gray-900 transition-colors"
+            className="text-base text-gray-400 hover:text-gray-900 transition-colors py-2 px-3"
           >
             取消
           </button>
           <button
             onClick={handleSave}
             disabled={saving || (!title.trim() && !content.trim())}
-            className="text-sm font-medium bg-gray-900 text-white px-4 py-1.5 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-30"
+            className="text-base font-medium bg-gray-900 text-white px-6 py-2.5 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-30"
           >
             {saving ? '保存中...' : '保存'}
           </button>
@@ -183,12 +183,12 @@ export default function NewEntry() {
         )}
 
         {/* Toolbar */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <svg width="22" height="22" viewBox="0 0 18 18" fill="none">
               <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
               <circle cx="7" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.2" />
               <path d="M3 14l4-4 2 2 3-4 4 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -198,28 +198,28 @@ export default function NewEntry() {
           <button
             onClick={handleAiCleanup}
             disabled={aiLoading || !content.trim()}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30"
+            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50 disabled:opacity-30 disabled:hover:border-gray-200"
           >
             {aiLoading ? (
-              <svg className="animate-spin" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg className="animate-spin" width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
               </svg>
             ) : (
-              <span>✨</span>
+              <span className="text-lg">✨</span>
             )}
             {aiLoading ? 'AI整理中...' : 'AI整理'}
           </button>
           <button
             onClick={handleGenerateImage}
             disabled={generatingImage || (!content.trim() && !title.trim())}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30"
+            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50 disabled:opacity-30 disabled:hover:border-gray-200"
           >
             {generatingImage ? (
-              <svg className="animate-spin" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <svg className="animate-spin" width="20" height="20" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
               </svg>
             ) : (
-              <span>🎨</span>
+              <span className="text-lg">🎨</span>
             )}
             {generatingImage ? '生成中...' : '生成配图'}
           </button>

@@ -23,7 +23,7 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
     },
     editorProps: {
       attributes: {
-        class: 'tiptap prose prose-sm max-w-none focus:outline-none',
+        class: 'tiptap prose prose-base max-w-none focus:outline-none',
       },
     },
     onCreate: ({ editor }) => {
@@ -36,7 +36,7 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 mb-4 pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
         <ToolbarButton
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -59,7 +59,7 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
           active={editor.isActive('blockquote')}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
-          "
+          &ldquo;
         </ToolbarButton>
         <ToolbarButton
           active={editor.isActive('bulletList')}
@@ -87,8 +87,8 @@ function ToolbarButton({
     <button
       type="button"
       onClick={onClick}
-      className={`w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-colors ${
-        active ? 'bg-gray-900 text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
+      className={`w-11 h-11 rounded-xl text-base font-medium flex items-center justify-center transition-colors ${
+        active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
       {children}
