@@ -40,23 +40,23 @@ export default function EntryCard({
         <div className="p-5">
           {/* Date & mood */}
           <div className="flex items-center gap-2 mb-2">
-            <time className="text-xs text-gray-400 tracking-wide">
+            <time className="text-sm text-gray-400 tracking-wide">
               {format(date, 'M月d日 EEEE', { locale: zhCN })}
             </time>
             {entry.mood && (
-              <span className="text-xs text-gray-400 before:content-['·'] before:mr-2">
+              <span className="text-sm text-gray-400 before:content-['·'] before:mr-2">
                 {entry.mood}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="text-base font-medium mb-1.5 group-hover:text-accent-gold transition-colors">
+          <h3 className="text-lg font-medium mb-1.5 group-hover:text-accent-gold transition-colors">
             {entry.title}
           </h3>
 
           {/* Preview */}
-          <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
+          <p className="text-base text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
 
           {/* Image count */}
           {entry.media && entry.media.length > 1 && (
