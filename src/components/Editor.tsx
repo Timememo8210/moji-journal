@@ -8,9 +8,10 @@ interface EditorProps {
   content: string
   onChange: (html: string) => void
   placeholder?: string
+  onEditorReady?: (editor: any) => void
 }
 
-export default function Editor({ content, onChange, placeholder = '写点什么...' }: EditorProps) {
+export default function Editor({ content, onChange, placeholder = '写点什么...', onEditorReady }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -24,6 +25,9 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
       attributes: {
         class: 'tiptap prose prose-sm max-w-none focus:outline-none',
       },
+    },
+    onCreate: ({ editor }) => {
+      onEditorReady?.(editor)
     },
   })
 

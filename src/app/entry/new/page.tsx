@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
@@ -8,6 +8,7 @@ import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
+const VoiceInput = dynamic(() => import('@/components/VoiceInput'), { ssr: false })
 
 export default function NewEntry() {
   const router = useRouter()
@@ -15,7 +16,64 @@ export default function NewEntry() {
   const [content, setContent] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [generatingImage, setGeneratingImage] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<any>(null)
+
+  const handleVoiceTranscript = useCallback((text: string) => {
+    const editor = editorRef.current
+    if (editor) {
+      editor.chain().focus().insertContent(text).run()
+    }
+  }, [])
+
+  const handleAiCleanup = async () => {
+    if (!content.trim() || aiLoading) return
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/ai/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || '整理失败')
+        return
+      }
+      if (data.cleaned && confirm('AI已整理完成，是否替换当前内容？')) {
+        setContent(data.cleaned)
+      }
+    } catch {
+      alert('网络错误，请稍后重试')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleGenerateImage = async () => {
+    const text = content || title
+    if (!text.trim() || generatingImage) return
+    setGeneratingImage(true)
+    try {
+      const res = await fetch('/api/ai/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: text }),
+      })
+      const data = await res.json()
+      if (data.imageUrl) {
+        setImages((prev) => [...prev, data.imageUrl])
+      } else {
+        alert(data.error || '图片生成失败')
+      }
+    } catch {
+      alert('网络错误，请重试')
+    } finally {
+      setGeneratingImage(false)
+    }
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -124,18 +182,56 @@ export default function NewEntry() {
           </div>
         )}
 
-        {/* Add photo button */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-6"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
-            <circle cx="7" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M3 14l4-4 2 2 3-4 4 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          添加照片
-        </button>
+        {/* Toolbar */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="7" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M3 14l4-4 2 2 3-4 4 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            添加照片
+          </button>
+          <button
+            onClick={handleAiCleanup}
+            disabled={aiLoading || !content.trim()}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30"
+          >
+            {aiLoading ? (
+              <svg className="animate-spin" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <span>✨</span>
+            )}
+            {aiLoading ? 'AI整理中...' : 'AI整理'}
+          </button>
+          <button
+            onClick={handleGenerateImage}
+            disabled={generatingImage || (!content.trim() && !title.trim())}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30"
+          >
+            {generatingImage ? (
+              <svg className="animate-spin" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <span>🎨</span>
+            )}
+            {generatingImage ? '生成中...' : '生成配图'}
+          </button>
+        </div>
+        {/* AI Image Generation Shimmer */}
+        {generatingImage && (
+          <div className="mb-6">
+            <div className="h-32 w-48 rounded-xl bg-gray-100 animate-pulse flex items-center justify-center">
+              <span className="text-xs text-gray-400">AI 配图生成中...</span>
+            </div>
+          </div>
+        )}
         <input
           ref={fileRef}
           type="file"
@@ -145,8 +241,20 @@ export default function NewEntry() {
           className="hidden"
         />
 
-        {/* Editor */}
-        <Editor content={content} onChange={setContent} placeholder="写点什么..." />
+        {/* Editor with Voice Input */}
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <Editor
+              content={content}
+              onChange={setContent}
+              placeholder="写点什么..."
+              onEditorReady={(editor: any) => { editorRef.current = editor }}
+            />
+          </div>
+          <div className="pt-1">
+            <VoiceInput onTranscript={handleVoiceTranscript} />
+          </div>
+        </div>
       </main>
     </motion.div>
   )
