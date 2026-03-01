@@ -57,27 +57,30 @@ export default function NewEntry() {
     if (!text.trim() || generatingImage) return
     setGeneratingImage(true)
     try {
-      // Use Pollinations.ai directly - completely free
-      const artPrompt = `watercolor illustration, minimalist, soft pastel, no text, artistic: ${text.replace(/<[^>]*>/g, '').slice(0, 200)}`
+      // Step 1: Use AI to generate a detailed English image prompt from the journal text
+      const res = await fetch('/api/ai/image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.replace(/<[^>]*>/g, '').slice(0, 500) }),
+      })
+      let artPrompt = 'watercolor illustration, minimalist, soft pastel tones'
+      if (res.ok) {
+        const data = await res.json()
+        if (data.prompt) artPrompt = data.prompt
+      }
+
+      // Step 2: Generate image with Pollinations using the AI-crafted prompt
       const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(artPrompt)}?width=800&height=600&nologo=true&seed=${Date.now()}`
-      // Preload image to verify it loads
       await new Promise<void>((resolve, reject) => {
         const img = new window.Image()
         img.onload = () => resolve()
         img.onerror = () => reject(new Error('图片加载失败'))
         img.src = imageUrl
-        setTimeout(() => reject(new Error('超时')), 30000)
+        setTimeout(() => reject(new Error('超时')), 45000)
       })
       setImages((prev) => [...prev, imageUrl])
     } catch {
-      // Fallback: try another free service
-      try {
-        const text2 = (content || title).replace(/<[^>]*>/g, '').slice(0, 100)
-        const fallbackUrl = `https://picsum.photos/seed/${encodeURIComponent(text2)}/800/600`
-        setImages((prev) => [...prev, fallbackUrl])
-      } catch {
-        alert('图片生成失败，请稍后重试')
-      }
+      alert('图片生成失败，请稍后重试')
     } finally {
       setGeneratingImage(false)
     }
