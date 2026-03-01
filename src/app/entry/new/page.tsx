@@ -57,30 +57,34 @@ export default function NewEntry() {
     if (!text.trim() || generatingImage) return
     setGeneratingImage(true)
     try {
-      // Step 1: Use AI to generate a detailed English image prompt from the journal text
+      // Step 1: AI extracts keywords from journal text
       const res = await fetch('/api/ai/image-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.replace(/<[^>]*>/g, '').slice(0, 500) }),
       })
-      let artPrompt = 'watercolor illustration, minimalist, soft pastel tones'
+      
+      let imageUrl = ''
       if (res.ok) {
         const data = await res.json()
-        if (data.prompt) artPrompt = data.prompt
+        imageUrl = data.imageUrl || ''
+      }
+      
+      if (!imageUrl) {
+        imageUrl = `https://source.unsplash.com/800x600/?journal,aesthetic`
       }
 
-      // Step 2: Generate image with Pollinations using the AI-crafted prompt
-      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(artPrompt)}?width=800&height=600&nologo=true&seed=${Date.now()}`
+      // Verify the image loads
       await new Promise<void>((resolve, reject) => {
         const img = new window.Image()
         img.onload = () => resolve()
         img.onerror = () => reject(new Error('图片加载失败'))
         img.src = imageUrl
-        setTimeout(() => reject(new Error('超时')), 45000)
+        setTimeout(() => resolve(), 10000) // Don't fail on timeout, just proceed
       })
       setImages((prev) => [...prev, imageUrl])
     } catch {
-      alert('图片生成失败，请稍后重试')
+      alert('配图获取失败，请稍后重试')
     } finally {
       setGeneratingImage(false)
     }

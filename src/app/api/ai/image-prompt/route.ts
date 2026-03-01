@@ -8,14 +8,10 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.GOOGLE_AI_API_KEY?.trim()
     if (!apiKey) return NextResponse.json({ error: 'no key' }, { status: 500 })
 
-    const systemPrompt = `You are an image prompt generator. Given a journal entry in any language, create a detailed English prompt for an AI image generator. The image should:
-- Capture the mood and scene described in the journal
-- Be in watercolor/illustration style with soft pastel tones
-- Be artistic and magazine-quality
-- NEVER include any text, words, or letters in the image
-- Be specific about colors, composition, and atmosphere
-
-Output ONLY the image prompt, nothing else. Keep it under 150 words.`
+    // Use Gemini to extract keywords and mood
+    const systemPrompt = `Given a journal entry, respond with a JSON object:
+{"keywords": "2-3 English keywords for image search", "mood": "one of: warm, cool, dark, bright, serene, energetic", "emoji": "one relevant emoji"}
+Output ONLY the JSON, nothing else.`
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -25,7 +21,7 @@ Output ONLY the image prompt, nothing else. Keep it under 150 words.`
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ parts: [{ text }] }],
-          generationConfig: { maxOutputTokens: 300 },
+          generationConfig: { maxOutputTokens: 100 },
         }),
       }
     )
@@ -35,9 +31,25 @@ Output ONLY the image prompt, nothing else. Keep it under 150 words.`
     }
 
     const data = await response.json()
-    const prompt = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
+    
+    // Parse the JSON response
+    let keywords = 'nature peaceful'
+    let mood = 'serene'
+    let emoji = '📝'
+    try {
+      const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      keywords = parsed.keywords || keywords
+      mood = parsed.mood || mood
+      emoji = parsed.emoji || emoji
+    } catch {}
 
-    return NextResponse.json({ prompt })
+    // Use picsum with a seed based on keywords for consistent results
+    const seed = keywords.replace(/\s+/g, '-').toLowerCase()
+    const imageUrl = `https://picsum.photos/seed/${seed}/800/600`
+
+    return NextResponse.json({ imageUrl, keywords, mood, emoji })
   } catch {
     return NextResponse.json({ error: 'failed' }, { status: 500 })
   }
