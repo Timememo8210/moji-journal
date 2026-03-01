@@ -7,56 +7,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '请提供日记内容' }, { status: 400 })
     }
 
-    const apiKey = process.env.GOOGLE_AI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
+    // Build an art-directed prompt
+    const artPrompt = `watercolor illustration, minimalist, soft pastel tones, magazine quality, no text, artistic: ${prompt.slice(0, 300)}`
+    const encodedPrompt = encodeURIComponent(artPrompt)
+
+    // Use Pollinations.ai - completely free, no API key needed
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&nologo=true&enhance=true`
+
+    // Verify it's accessible
+    const check = await fetch(imageUrl, { method: 'HEAD' })
+    if (!check.ok) {
+      return NextResponse.json({ error: '图片生成失败' }, { status: 502 })
     }
-
-    const systemPrompt = `Generate an artistic, minimalist illustration that captures the mood and theme of the following journal entry. Style: watercolor, soft tones, magazine-quality, abstract. Do NOT include any text or words in the image. Journal entry: ${prompt.slice(0, 1000)}`
-
-    // Use Gemini 2.0 Flash with image generation
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT'],
-            responseMimeType: 'image/png',
-          },
-        }),
-      }
-    )
-
-    if (!res.ok) {
-      const errText = await res.text()
-      console.error('Gemini API error:', res.status, errText)
-      return NextResponse.json(
-        { error: `图片生成失败 (${res.status})` },
-        { status: 502 }
-      )
-    }
-
-    const data = await res.json()
-
-    // Extract inline image data from response
-    const parts = data?.candidates?.[0]?.content?.parts
-    if (!parts) {
-      console.error('Unexpected response:', JSON.stringify(data).slice(0, 500))
-      return NextResponse.json({ error: '未能生成图片' }, { status: 502 })
-    }
-
-    const imagePart = parts.find(
-      (p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData
-    )
-    if (!imagePart?.inlineData) {
-      return NextResponse.json({ error: '未能生成图片' }, { status: 502 })
-    }
-
-    const { mimeType, data: b64 } = imagePart.inlineData
-    const imageUrl = `data:${mimeType};base64,${b64}`
 
     return NextResponse.json({ imageUrl })
   } catch (err) {

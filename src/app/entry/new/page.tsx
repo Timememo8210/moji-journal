@@ -57,19 +57,27 @@ export default function NewEntry() {
     if (!text.trim() || generatingImage) return
     setGeneratingImage(true)
     try {
-      const res = await fetch('/api/ai/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text }),
+      // Use Pollinations.ai directly - completely free
+      const artPrompt = `watercolor illustration, minimalist, soft pastel, no text, artistic: ${text.replace(/<[^>]*>/g, '').slice(0, 200)}`
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(artPrompt)}?width=800&height=600&nologo=true&seed=${Date.now()}`
+      // Preload image to verify it loads
+      await new Promise<void>((resolve, reject) => {
+        const img = new window.Image()
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('图片加载失败'))
+        img.src = imageUrl
+        setTimeout(() => reject(new Error('超时')), 30000)
       })
-      const data = await res.json()
-      if (data.imageUrl) {
-        setImages((prev) => [...prev, data.imageUrl])
-      } else {
-        alert(data.error || '图片生成失败')
-      }
+      setImages((prev) => [...prev, imageUrl])
     } catch {
-      alert('网络错误，请重试')
+      // Fallback: try another free service
+      try {
+        const text2 = (content || title).replace(/<[^>]*>/g, '').slice(0, 100)
+        const fallbackUrl = `https://picsum.photos/seed/${encodeURIComponent(text2)}/800/600`
+        setImages((prev) => [...prev, fallbackUrl])
+      } catch {
+        alert('图片生成失败，请稍后重试')
+      }
     } finally {
       setGeneratingImage(false)
     }
@@ -95,34 +103,41 @@ export default function NewEntry() {
   }
 
   const handleSave = async () => {
-    if (!title.trim() && !content.trim()) return
+    // Get latest content directly from editor in case state is stale
+    const latestContent = editorRef.current ? editorRef.current.getHTML() : content
+    if (!title.trim() && !latestContent.trim()) return
     setSaving(true)
 
-    const now = new Date().toISOString()
-    const newEntry: JournalEntry = {
-      id: Date.now().toString(),
-      title: title || '无题',
-      content,
-      created_at: now,
-      updated_at: now,
-      media: images.map((url, i) => ({
-        id: `m-${Date.now()}-${i}`,
-        entry_id: '',
-        type: 'image' as const,
-        url,
-        position: i,
+    try {
+      const now = new Date().toISOString()
+      const newEntry: JournalEntry = {
+        id: Date.now().toString(),
+        title: title || '无题',
+        content: latestContent,
         created_at: now,
-      })),
+        updated_at: now,
+        media: images.map((url, i) => ({
+          id: `m-${Date.now()}-${i}`,
+          entry_id: '',
+          type: 'image' as const,
+          url,
+          position: i,
+          created_at: now,
+        })),
+      }
+      newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
+
+      // Save to localStorage
+      const saved = localStorage.getItem('moji-entries')
+      const entries: JournalEntry[] = saved ? JSON.parse(saved) : [...mockEntries]
+      entries.unshift(newEntry)
+      localStorage.setItem('moji-entries', JSON.stringify(entries))
+
+      router.push('/')
+    } catch (err) {
+      alert('保存失败: ' + (err instanceof Error ? err.message : '存储空间可能已满'))
+      setSaving(false)
     }
-    newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
-
-    // Save to localStorage
-    const saved = localStorage.getItem('moji-entries')
-    const entries: JournalEntry[] = saved ? JSON.parse(saved) : [...mockEntries]
-    entries.unshift(newEntry)
-    localStorage.setItem('moji-entries', JSON.stringify(entries))
-
-    router.push('/')
   }
 
   return (

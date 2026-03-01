@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { useEffect } from 'react'
 
 interface EditorProps {
   content: string
@@ -30,6 +31,13 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
       onEditorReady?.(editor)
     },
   })
+
+  // Sync external content changes (e.g. AI cleanup) into the editor
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content, false)
+    }
+  }, [content, editor])
 
   if (!editor) return null
 
