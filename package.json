@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.39.0",
     "@tiptap/extension-image": "^2.2.0",
     "@tiptap/extension-placeholder": "^2.2.0",

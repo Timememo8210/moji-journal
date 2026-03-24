@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
-import { exportEntries } from '@/lib/entries'
+import { getEntries, exportEntries } from '@/lib/entries'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import EntryCard from '@/components/EntryCard'
+import UserMenu from '@/components/UserMenu'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Timeline() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
@@ -17,21 +19,31 @@ export default function Timeline() {
   const [filterYear, setFilterYear] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const { user, isConfigured } = useAuth()
 
   useEffect(() => {
-    // Load from localStorage or mock data
-    const saved = localStorage.getItem('moji-entries')
-    if (saved) {
-      setEntries(JSON.parse(saved))
-    } else {
-      setEntries(
-        [...mockEntries].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-      )
+    async function loadEntries() {
+      if (isConfigured) {
+        // Load from Supabase (user-specific via RLS)
+        const data = await getEntries()
+        setEntries(data)
+      } else {
+        // Fallback: localStorage or mock data
+        const saved = localStorage.getItem('moji-entries')
+        if (saved) {
+          setEntries(JSON.parse(saved))
+        } else {
+          setEntries(
+            [...mockEntries].sort(
+              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+          )
+        }
+      }
+      setMounted(true)
     }
-    setMounted(true)
-  }, [])
+    loadEntries()
+  }, [user, isConfigured])
 
   // Filter entries
   const filteredEntries = entries.filter((entry) => {
@@ -108,6 +120,7 @@ export default function Timeline() {
                 <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </Link>
+            <UserMenu />
           </div>
         </div>
         

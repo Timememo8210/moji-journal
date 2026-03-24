@@ -1,9 +1,13 @@
 import { JournalEntry } from '@/types'
-import { supabase, isSupabaseConfigured } from './supabase'
+import { createBrowserSupabaseClient, isSupabaseConfigured } from './supabase'
 import { mockEntries } from './mock-data'
 
-// In-memory store for mock mode
+// In-memory store for guest/mock mode
 let localEntries = [...mockEntries]
+
+function getClient() {
+  return createBrowserSupabaseClient()
+}
 
 export async function getEntries(): Promise<JournalEntry[]> {
   if (!isSupabaseConfigured()) {
@@ -12,7 +16,8 @@ export async function getEntries(): Promise<JournalEntry[]> {
     )
   }
 
-  const { data: entries } = await supabase!
+  const supabase = getClient()
+  const { data: entries } = await supabase
     .from('entries')
     .select('*')
     .order('created_at', { ascending: false })
@@ -21,7 +26,7 @@ export async function getEntries(): Promise<JournalEntry[]> {
 
   const withMedia = await Promise.all(
     entries.map(async (entry) => {
-      const { data: media } = await supabase!
+      const { data: media } = await supabase
         .from('media')
         .select('*')
         .eq('entry_id', entry.id)
@@ -38,7 +43,8 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
     return localEntries.find((e) => e.id === id) || null
   }
 
-  const { data: entry } = await supabase!
+  const supabase = getClient()
+  const { data: entry } = await supabase
     .from('entries')
     .select('*')
     .eq('id', id)
@@ -46,7 +52,7 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
 
   if (!entry) return null
 
-  const { data: media } = await supabase!
+  const { data: media } = await supabase
     .from('media')
     .select('*')
     .eq('entry_id', id)
@@ -83,14 +89,15 @@ export async function createEntry(
     return newEntry
   }
 
-  const { data: entry } = await supabase!
+  const supabase = getClient()
+  const { data: entry } = await supabase
     .from('entries')
     .insert({ title, content, created_at: now, updated_at: now })
     .select()
     .single()
 
   if (entry && images.length > 0) {
-    await supabase!.from('media').insert(
+    await supabase.from('media').insert(
       images.map((url, i) => ({
         entry_id: entry.id,
         type: 'image',
@@ -109,8 +116,9 @@ export async function deleteEntry(id: string): Promise<void> {
     return
   }
 
-  await supabase!.from('media').delete().eq('entry_id', id)
-  await supabase!.from('entries').delete().eq('id', id)
+  const supabase = getClient()
+  await supabase.from('media').delete().eq('entry_id', id)
+  await supabase.from('entries').delete().eq('id', id)
 }
 
 export function exportEntries(entries: JournalEntry[]): string {
