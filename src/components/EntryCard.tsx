@@ -1,14 +1,12 @@
 'use client'
 
 import { JournalEntry } from '@/types'
-import { format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { useState } from 'react'
+import { relativeCardDate } from '@/lib/relative-date'
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '')
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
 }
 
 export default function EntryCard({
@@ -18,9 +16,9 @@ export default function EntryCard({
   entry: JournalEntry
   onDelete?: (id: string) => void
 }) {
-  const [showMenu, setShowMenu] = useState(false)
-  const date = new Date(entry.created_at)
-  const preview = stripHtml(entry.content).slice(0, 120)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const dateLabel = relativeCardDate(entry.created_at)
+  const preview = stripHtml(entry.content).slice(0, 100)
   const heroImage = entry.media?.find((m) => m.type === 'image')
 
   return (
@@ -33,6 +31,7 @@ export default function EntryCard({
               src={heroImage.url}
               alt={heroImage.caption || ''}
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+              loading="lazy"
             />
           </div>
         )}
@@ -41,7 +40,7 @@ export default function EntryCard({
           {/* Date & mood */}
           <div className="flex items-center gap-2 mb-2">
             <time className="text-sm text-gray-400 tracking-wide">
-              {format(date, 'M月d日 EEEE', { locale: zhCN })}
+              {dateLabel}
             </time>
             {entry.mood && (
               <span className="text-sm text-gray-400 before:content-['·'] before:mr-2">
@@ -56,35 +55,77 @@ export default function EntryCard({
           </h3>
 
           {/* Preview */}
-          <p className="text-base text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
+          {preview && (
+            <p className="text-base text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
+          )}
 
-          {/* Image count */}
-          {entry.media && entry.media.length > 1 && (
-            <div className="mt-3 flex items-center gap-1 text-xs text-gray-400">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                <circle cx="6" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M3 12l3-3 2 2 3-4 3 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {entry.media.filter((m) => m.type === 'image').length} 张照片
+          {/* Image count & thumbnail row */}
+          {entry.media && entry.media.filter(m => m.type === 'image').length > 1 && (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex -space-x-2">
+                {entry.media.filter(m => m.type === 'image').slice(0, 3).map((img, i) => (
+                  <div key={img.id} className="w-8 h-8 rounded-lg overflow-hidden border-2 border-white">
+                    <img src={img.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400">
+                {entry.media.filter((m) => m.type === 'image').length} 张照片
+              </span>
             </div>
           )}
         </div>
 
-        {/* Delete button */}
+        {/* Delete button with confirmation */}
         {onDelete && (
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              if (confirm('确定删除这篇日记吗？')) onDelete(entry.id)
-            }}
-            className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/20 backdrop-blur text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/40"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </button>
+          <>
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowConfirm(true)
+              }}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 backdrop-blur text-white opacity-0 group-hover:opacity-100 md:opacity-0 transition-opacity flex items-center justify-center hover:bg-black/40"
+              style={{ opacity: showConfirm ? 1 : undefined }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            {/* Inline confirm dialog */}
+            {showConfirm && (
+              <div
+                className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+              >
+                <p className="text-sm text-gray-600">确定删除这篇日记吗？</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowConfirm(false)
+                    }}
+                    className="px-4 py-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onDelete(entry.id)
+                      setShowConfirm(false)
+                    }}
+                    className="px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </article>
     </Link>

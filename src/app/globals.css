@@ -8,12 +8,22 @@
   body {
     @apply bg-white text-gray-900 antialiased;
     font-size: 17px;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent iOS zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }
 
 /* Tiptap editor styles */
 .tiptap {
   @apply outline-none min-h-[200px];
+  font-size: 17px;
 }
 
 .tiptap p {
@@ -65,4 +75,14 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-300;
+}
+
+/* Page transitions */
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+  .safe-bottom-fab {
+    bottom: max(calc(env(safe-area-inset-bottom) + 24px), 40px);
+  }
 }

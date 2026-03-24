@@ -28,7 +28,7 @@ export default function UserMenu() {
     return (
       <Link
         href="/auth/login"
-        className="flex items-center gap-1.5 text-gray-400 hover:text-gray-900 transition-colors text-sm"
+        className="flex items-center gap-1.5 text-gray-400 hover:text-gray-900 transition-colors text-sm min-h-[44px] min-w-[44px] justify-center"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -43,8 +43,8 @@ export default function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center 
-                   justify-center text-gray-600 text-xs font-medium hover:border-gray-400 
+        className="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center
+                   justify-center text-gray-600 text-xs font-medium hover:border-gray-400
                    transition-colors"
       >
         {initials}
@@ -59,8 +59,8 @@ export default function UserMenu() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-10 z-20 bg-white border border-gray-200 
-                         rounded-xl shadow-xl py-1.5 min-w-[160px]"
+              className="absolute right-0 top-11 z-20 bg-white border border-gray-200
+                         rounded-xl shadow-xl py-1.5 min-w-[180px]"
             >
               <div className="px-4 py-2 border-b border-gray-100 mb-1">
                 <p className="text-gray-900 text-sm font-medium truncate">{displayName}</p>
@@ -68,8 +68,8 @@ export default function UserMenu() {
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:text-gray-900 
-                           hover:bg-gray-50 transition-colors"
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-500 hover:text-gray-900
+                           hover:bg-gray-50 transition-colors min-h-[44px] flex items-center"
               >
                 退出登录
               </button>

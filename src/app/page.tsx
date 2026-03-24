@@ -13,6 +13,8 @@ import { zhCN } from 'date-fns/locale'
 import EntryCard from '@/components/EntryCard'
 import UserMenu from '@/components/UserMenu'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/components/Toast'
+import { SkeletonList } from '@/components/Skeleton'
 
 export default function Timeline() {
   const router = useRouter()
@@ -24,13 +26,14 @@ export default function Timeline() {
   const [showSearch, setShowSearch] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { user, isConfigured, loading: authLoading } = useAuth()
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (authLoading) return
 
     // Redirect to login if Supabase is configured but user is not logged in
     if (isConfigured && !user) {
-      router.replace('/auth/login')
+      router.replace('/auth/login?redirect=/')
       return
     }
 
@@ -55,7 +58,8 @@ export default function Timeline() {
           }
         }
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : '加载失败')
+        const message = err instanceof Error ? err.message : '加载失败'
+        setLoadError(navigator.onLine ? message : '网络连接失败，请检查网络后重试')
       }
       setMounted(true)
     }
@@ -65,7 +69,7 @@ export default function Timeline() {
   // Filter entries
   const filteredEntries = entries.filter((entry) => {
     const date = new Date(entry.created_at)
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entry.content.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesYear = !filterYear || date.getFullYear().toString() === filterYear
@@ -85,16 +89,37 @@ export default function Timeline() {
     a.download = `moji-export-${format(new Date(), 'yyyy-MM-dd')}.json`
     a.click()
     URL.revokeObjectURL(url)
+    showToast('导出成功')
   }
 
   const handleDelete = async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
-    if (isSupabaseConfigured()) {
-      await deleteEntry(id)
-    } else {
-      const updated = entries.filter((e) => e.id !== id)
-      localStorage.setItem('moji-entries', JSON.stringify(updated))
+    try {
+      if (isSupabaseConfigured()) {
+        await deleteEntry(id)
+      } else {
+        const updated = entries.filter((e) => e.id !== id)
+        localStorage.setItem('moji-entries', JSON.stringify(updated))
+      }
+      showToast('已删除')
+    } catch {
+      showToast('删除失败', 'error')
     }
+  }
+
+  const handleRetry = async () => {
+    setLoadError(null)
+    setMounted(false)
+    try {
+      if (isConfigured) {
+        const data = await getEntries()
+        setEntries(data)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '加载失败'
+      setLoadError(navigator.onLine ? message : '网络连接失败，请检查网络后重试')
+    }
+    setMounted(true)
   }
 
   // Group entries by month
@@ -107,11 +132,19 @@ export default function Timeline() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">加载中...</p>
-        </div>
+      <div className="min-h-screen bg-white">
+        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+          <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
+            <h1 className="text-lg font-semibold tracking-tight">墨记</h1>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+            </div>
+          </div>
+        </header>
+        <main className="max-w-journal mx-auto px-6 py-8">
+          <SkeletonList />
+        </main>
       </div>
     )
   }
@@ -120,7 +153,7 @@ export default function Timeline() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-white"
+      className="min-h-screen bg-white safe-bottom"
     >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
@@ -129,7 +162,7 @@ export default function Timeline() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="text-sm text-gray-400 hover:text-gray-900 transition-colors"
+              className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <circle cx="7.5" cy="7.5" r="5" stroke="currentColor" strokeWidth="1.5" />
@@ -138,81 +171,80 @@ export default function Timeline() {
             </button>
             <button
               onClick={handleExport}
-              className="text-sm text-gray-400 hover:text-gray-900 transition-colors"
+              className="h-11 px-3 text-sm text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
             >
               导出
             </button>
-            <Link
-              href="/entry/new"
-              className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center hover:bg-gray-700 transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </Link>
             <UserMenu />
           </div>
         </div>
-        
+
         {/* Search & Filter Bar */}
-        {showSearch && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="border-t border-gray-50 bg-gray-50/50"
-          >
-            <div className="max-w-journal mx-auto px-6 py-3 space-y-3">
-              {/* Search input */}
-              <input
-                type="text"
-                placeholder="搜索日记内容..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-base placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
-                autoFocus
-              />
-              {/* Date filters */}
-              <div className="flex gap-3">
-                <select
-                  value={filterYear}
-                  onChange={(e) => setFilterYear(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
-                >
-                  <option value="">全部年份</option>
-                  {years.map(y => <option key={y} value={y}>{y}年</option>)}
-                </select>
-                <select
-                  value={filterMonth}
-                  onChange={(e) => setFilterMonth(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
-                >
-                  <option value="">全部月份</option>
-                  {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{i+1}月</option>)}
-                </select>
-                {(searchQuery || filterYear || filterMonth) && (
-                  <button
-                    onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
-                    className="px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-900 transition-colors"
+        <AnimatePresence>
+          {showSearch && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-gray-50 bg-gray-50/50 overflow-hidden"
+            >
+              <div className="max-w-journal mx-auto px-6 py-3 space-y-3">
+                {/* Search input */}
+                <input
+                  type="text"
+                  placeholder="搜索日记内容..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-base placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
+                  autoFocus
+                />
+                {/* Date filters */}
+                <div className="flex gap-3">
+                  <select
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
                   >
-                    清除
-                  </button>
-                )}
+                    <option value="">全部年份</option>
+                    {years.map(y => <option key={y} value={y}>{y}年</option>)}
+                  </select>
+                  <select
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                  >
+                    <option value="">全部月份</option>
+                    {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{i+1}月</option>)}
+                  </select>
+                  {(searchQuery || filterYear || filterMonth) && (
+                    <button
+                      onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
+                      className="px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-900 transition-colors"
+                    >
+                      清除
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Timeline */}
-      <main className="max-w-journal mx-auto px-6 py-8">
+      <main className="max-w-journal mx-auto px-6 py-8 pb-28">
         {loadError ? (
           <div className="text-center py-32">
+            <p className="text-4xl mb-4">{navigator.onLine ? '😥' : '📡'}</p>
             <p className="text-red-400 text-sm mb-4">{loadError}</p>
             <button
-              onClick={() => window.location.reload()}
-              className="text-sm text-gray-900 underline underline-offset-4"
+              onClick={handleRetry}
+              className="inline-flex items-center gap-2 text-sm text-white bg-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-700 transition-colors"
             >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 7a6 6 0 1 1 1.06 3.39" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M1 11V7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
               重试
             </button>
           </div>
@@ -222,14 +254,33 @@ export default function Timeline() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-32"
           >
-            <p className="text-gray-300 text-6xl mb-6">✎</p>
-            <p className="text-gray-400 text-sm">还没有日记</p>
+            <p className="text-6xl mb-6">📝</p>
+            <h2 className="text-lg font-medium text-gray-800 mb-2">开始你的第一篇日记</h2>
+            <p className="text-gray-400 text-sm mb-6">记录生活中的点点滴滴，留住珍贵的回忆</p>
             <Link
               href="/entry/new"
-              className="inline-block mt-4 text-sm text-gray-900 underline underline-offset-4"
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-gray-700 transition-colors"
             >
-              写第一篇
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              写日记
             </Link>
+          </motion.div>
+        ) : filteredEntries.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-32"
+          >
+            <p className="text-4xl mb-4">🔍</p>
+            <p className="text-gray-400 text-sm">没有找到匹配的日记</p>
+            <button
+              onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
+              className="mt-3 text-sm text-gray-900 underline underline-offset-4"
+            >
+              清除筛选
+            </button>
           </motion.div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -261,6 +312,18 @@ export default function Timeline() {
           </AnimatePresence>
         )}
       </main>
+
+      {/* Floating Action Button */}
+      {entries.length > 0 && (
+        <Link
+          href="/entry/new"
+          className="fixed right-5 safe-bottom-fab w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-lg hover:bg-gray-700 active:scale-95 transition-all z-40"
+        >
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </Link>
+      )}
     </motion.div>
   )
 }
