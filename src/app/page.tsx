@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
-import { getEntries, deleteEntry, exportEntries } from '@/lib/entries'
+import { getEntries, deleteEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { zhCN, enUS } from 'date-fns/locale'
@@ -98,18 +98,6 @@ export default function Timeline() {
   })
 
   const years = Array.from(new Set(entries.map(e => new Date(e.created_at).getFullYear()))).sort((a, b) => b - a)
-
-  const handleExport = () => {
-    const json = exportEntries(entries)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `moji-export-${format(new Date(), 'yyyy-MM-dd')}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast(t('exportSuccess'))
-  }
 
   const handleDelete = async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
@@ -233,12 +221,6 @@ export default function Timeline() {
                 <circle cx="7.5" cy="7.5" r="5" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M11.5 11.5L16 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
-            </button>
-            <button
-              onClick={handleExport}
-              className="h-11 px-3 text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
-            >
-              {t('export')}
             </button>
             {/* Settings */}
             <Link

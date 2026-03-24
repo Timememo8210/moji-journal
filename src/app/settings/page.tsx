@@ -9,9 +9,11 @@ import { useTheme, Theme } from '@/contexts/ThemeContext'
 import { useToast } from '@/components/Toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase'
 import { signOut } from '@/lib/auth'
-import { getEntries, exportEntries } from '@/lib/entries'
-import { format } from 'date-fns'
+import { getEntries } from '@/lib/entries'
 import { Locale } from '@/lib/i18n'
+import { JournalEntry } from '@/types'
+import PrintExport, { triggerPrint } from '@/components/PrintExport'
+import { isGuestMode } from '@/lib/guest'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -27,6 +29,7 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+  const [printEntries, setPrintEntries] = useState<JournalEntry[] | null>(null)
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || t('user')
 
@@ -81,16 +84,24 @@ export default function SettingsPage() {
 
   const handleExport = async () => {
     try {
-      const entries = await getEntries()
-      const json = exportEntries(entries)
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `moji-export-${format(new Date(), 'yyyy-MM-dd')}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-      showToast(t('exportSuccess'))
+      let entries: JournalEntry[]
+      if (isConfigured && user && !isGuestMode()) {
+        entries = await getEntries()
+      } else {
+        const saved = localStorage.getItem('moji-entries')
+        entries = saved ? JSON.parse(saved) : []
+      }
+      if (entries.length === 0) {
+        showToast(locale === 'zh' ? '没有日记可导出' : 'No entries to export', 'error')
+        return
+      }
+      setPrintEntries(entries)
+      // Wait for DOM to render the print content
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          triggerPrint()
+        })
+      })
     } catch {
       showToast(t('loadFailed'), 'error')
     }
@@ -302,8 +313,9 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('exportDataDesc')}</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-400 flex-shrink-0">
-                <path d="M8 2v8M4 7l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M4 6V2h8v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="2" y="6" width="12" height="6" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M4 12v2h8v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <button
@@ -322,6 +334,15 @@ export default function SettingsPage() {
           </div>
         </Section>
       </main>
+
+      {/* Hidden print layout */}
+      {printEntries && (
+        <PrintExport
+          entries={printEntries}
+          locale={locale}
+          userName={displayName}
+        />
+      )}
     </motion.div>
   )
 }
