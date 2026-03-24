@@ -3,7 +3,8 @@
 import { JournalEntry } from '@/types'
 import Link from 'next/link'
 import { useState } from 'react'
-import { relativeCardDate } from '@/lib/relative-date'
+import { useRelativeCardDate } from '@/lib/relative-date'
+import { useI18n } from '@/contexts/I18nContext'
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
@@ -17,16 +18,17 @@ export default function EntryCard({
   onDelete?: (id: string) => void
 }) {
   const [showConfirm, setShowConfirm] = useState(false)
-  const dateLabel = relativeCardDate(entry.created_at)
+  const { t, locale } = useI18n()
+  const dateLabel = useRelativeCardDate(entry.created_at)
   const preview = stripHtml(entry.content).slice(0, 100)
   const heroImage = entry.media?.find((m) => m.type === 'image')
+  const imageCount = entry.media?.filter(m => m.type === 'image').length || 0
 
   return (
     <Link href={`/entry/${entry.id}`} className="block group">
-      <article className="relative rounded-2xl border border-gray-100 bg-white overflow-hidden hover:border-gray-200 transition-all hover:shadow-sm">
-        {/* Hero image */}
+      <article className="relative rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/50 overflow-hidden hover:border-gray-200 dark:hover:border-gray-700 transition-all hover:shadow-sm">
         {heroImage && (
-          <div className="aspect-[16/9] overflow-hidden bg-gray-50">
+          <div className="aspect-[16/9] overflow-hidden bg-gray-50 dark:bg-gray-800">
             <img
               src={heroImage.url}
               alt={heroImage.caption || ''}
@@ -37,46 +39,41 @@ export default function EntryCard({
         )}
 
         <div className="p-5">
-          {/* Date & mood */}
           <div className="flex items-center gap-2 mb-2">
-            <time className="text-sm text-gray-400 tracking-wide">
+            <time className="text-sm text-gray-400 dark:text-gray-500 tracking-wide">
               {dateLabel}
             </time>
             {entry.mood && (
-              <span className="text-sm text-gray-400 before:content-['·'] before:mr-2">
+              <span className="text-sm text-gray-400 dark:text-gray-500 before:content-['·'] before:mr-2">
                 {entry.mood}
               </span>
             )}
           </div>
 
-          {/* Title */}
-          <h3 className="text-lg font-medium mb-1.5 group-hover:text-accent-gold transition-colors">
+          <h3 className="text-lg font-medium dark:text-white mb-1.5 group-hover:text-accent-gold transition-colors">
             {entry.title}
           </h3>
 
-          {/* Preview */}
           {preview && (
-            <p className="text-base text-gray-500 leading-relaxed line-clamp-2">{preview}</p>
+            <p className="text-base text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{preview}</p>
           )}
 
-          {/* Image count & thumbnail row */}
-          {entry.media && entry.media.filter(m => m.type === 'image').length > 1 && (
+          {imageCount > 1 && (
             <div className="mt-3 flex items-center gap-2">
               <div className="flex -space-x-2">
-                {entry.media.filter(m => m.type === 'image').slice(0, 3).map((img, i) => (
-                  <div key={img.id} className="w-8 h-8 rounded-lg overflow-hidden border-2 border-white">
+                {entry.media!.filter(m => m.type === 'image').slice(0, 3).map((img) => (
+                  <div key={img.id} className="w-8 h-8 rounded-lg overflow-hidden border-2 border-white dark:border-gray-800">
                     <img src={img.url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </div>
                 ))}
               </div>
-              <span className="text-xs text-gray-400">
-                {entry.media.filter((m) => m.type === 'image').length} 张照片
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {imageCount} {t('photos')}
               </span>
             </div>
           )}
         </div>
 
-        {/* Delete button with confirmation */}
         {onDelete && (
           <>
             <button
@@ -93,13 +90,12 @@ export default function EntryCard({
               </svg>
             </button>
 
-            {/* Inline confirm dialog */}
             {showConfirm && (
               <div
-                className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10"
+                className="absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-10"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
               >
-                <p className="text-sm text-gray-600">确定删除这篇日记吗？</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('confirmDeleteEntry')}</p>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={(e) => {
@@ -107,9 +103,9 @@ export default function EntryCard({
                       e.stopPropagation()
                       setShowConfirm(false)
                     }}
-                    className="px-4 py-2 text-sm text-gray-500 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    取消
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={(e) => {
@@ -120,7 +116,7 @@ export default function EntryCard({
                     }}
                     className="px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
                   >
-                    删除
+                    {t('delete')}
                   </button>
                 </div>
               </div>

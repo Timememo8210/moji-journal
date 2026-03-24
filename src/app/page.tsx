@@ -9,10 +9,11 @@ import { mockEntries } from '@/lib/mock-data'
 import { getEntries, deleteEntry, exportEntries } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { zhCN, enUS } from 'date-fns/locale'
 import EntryCard from '@/components/EntryCard'
 import UserMenu from '@/components/UserMenu'
 import { useAuth } from '@/contexts/AuthContext'
+import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
 import { SkeletonList } from '@/components/Skeleton'
 
@@ -27,8 +28,10 @@ export default function Timeline() {
   const [showMonthNav, setShowMonthNav] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { user, isConfigured, loading: authLoading } = useAuth()
+  const { t, locale } = useI18n()
   const { showToast } = useToast()
   const monthRefs = useRef<Record<string, HTMLElement | null>>({})
+  const dateFnsLocale = locale === 'zh' ? zhCN : enUS
 
   useEffect(() => {
     if (authLoading) return
@@ -43,11 +46,9 @@ export default function Timeline() {
       try {
         setLoadError(null)
         if (isConfigured) {
-          // Load from Supabase (user-specific via RLS)
           const data = await getEntries()
           setEntries(data)
         } else {
-          // Fallback: localStorage or mock data
           const saved = localStorage.getItem('moji-entries')
           if (saved) {
             setEntries(JSON.parse(saved))
@@ -60,15 +61,14 @@ export default function Timeline() {
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : '加载失败'
-        setLoadError(navigator.onLine ? message : '网络连接失败，请检查网络后重试')
+        const message = err instanceof Error ? err.message : t('loadFailed')
+        setLoadError(navigator.onLine ? message : t('networkError'))
       }
       setMounted(true)
     }
     loadEntries()
-  }, [user, isConfigured, authLoading, router])
+  }, [user, isConfigured, authLoading, router, t])
 
-  // Filter entries
   const filteredEntries = entries.filter((entry) => {
     const date = new Date(entry.created_at)
     const matchesSearch = !searchQuery ||
@@ -79,7 +79,6 @@ export default function Timeline() {
     return matchesSearch && matchesYear && matchesMonth
   })
 
-  // Get available years from entries
   const years = Array.from(new Set(entries.map(e => new Date(e.created_at).getFullYear()))).sort((a, b) => b - a)
 
   const handleExport = () => {
@@ -91,7 +90,7 @@ export default function Timeline() {
     a.download = `moji-export-${format(new Date(), 'yyyy-MM-dd')}.json`
     a.click()
     URL.revokeObjectURL(url)
-    showToast('导出成功')
+    showToast(t('exportSuccess'))
   }
 
   const handleDelete = async (id: string) => {
@@ -103,9 +102,9 @@ export default function Timeline() {
         const updated = entries.filter((e) => e.id !== id)
         localStorage.setItem('moji-entries', JSON.stringify(updated))
       }
-      showToast('已删除')
+      showToast(t('deleted'))
     } catch {
-      showToast('删除失败', 'error')
+      showToast(t('deleteFailed'), 'error')
     }
   }
 
@@ -118,8 +117,8 @@ export default function Timeline() {
         setEntries(data)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '加载失败'
-      setLoadError(navigator.onLine ? message : '网络连接失败，请检查网络后重试')
+      const message = err instanceof Error ? err.message : t('loadFailed')
+      setLoadError(navigator.onLine ? message : t('networkError'))
     }
     setMounted(true)
   }
@@ -132,9 +131,16 @@ export default function Timeline() {
     }
   }
 
-  // Group entries by month
+  const formatMonthKey = (dateStr: string) => {
+    const date = new Date(dateStr)
+    if (locale === 'zh') {
+      return format(date, 'yyyy年M月', { locale: zhCN })
+    }
+    return format(date, 'MMMM yyyy', { locale: enUS })
+  }
+
   const grouped = filteredEntries.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
-    const key = format(new Date(entry.created_at), 'yyyy年M月', { locale: zhCN })
+    const key = formatMonthKey(entry.created_at)
     if (!acc[key]) acc[key] = []
     acc[key].push(entry)
     return acc
@@ -142,15 +148,23 @@ export default function Timeline() {
 
   const monthKeys = Object.keys(grouped)
 
+  const formatYear = (y: number) => locale === 'zh' ? `${y}年` : `${y}`
+  const formatMonth = (m: number) => {
+    if (locale === 'zh') return `${m}月`
+    const date = new Date(2000, m - 1, 1)
+    return format(date, 'MMMM', { locale: enUS })
+  }
+  const formatEntriesCount = (n: number) => locale === 'zh' ? `${n} 篇` : `${n}`
+
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800">
           <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
-            <h1 className="text-lg font-semibold tracking-tight">墨记</h1>
+            <h1 className="text-lg font-semibold tracking-tight dark:text-white">{t('appName')}</h1>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse" />
-              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+              <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />
             </div>
           </div>
         </header>
@@ -165,19 +179,18 @@ export default function Timeline() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-gray-50 safe-bottom"
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-bottom"
     >
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold tracking-tight">墨记</h1>
+          <h1 className="text-lg font-semibold tracking-tight dark:text-white">{t('appName')}</h1>
           <div className="flex items-center gap-3">
-            {/* Month nav toggle */}
             {monthKeys.length > 1 && (
               <button
                 onClick={() => setShowMonthNav(!showMonthNav)}
-                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
-                title="月份导航"
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
+                title={t('monthNav')}
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                   <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
@@ -188,7 +201,7 @@ export default function Timeline() {
             )}
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
+              className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <circle cx="7.5" cy="7.5" r="5" stroke="currentColor" strokeWidth="1.5" />
@@ -197,10 +210,20 @@ export default function Timeline() {
             </button>
             <button
               onClick={handleExport}
-              className="h-11 px-3 text-sm text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
+              className="h-11 px-3 text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
             >
-              导出
+              {t('export')}
             </button>
+            {/* Settings */}
+            <Link
+              href="/settings"
+              className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </Link>
             <UserMenu />
           </div>
         </div>
@@ -212,7 +235,7 @@ export default function Timeline() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-gray-100 bg-white overflow-hidden"
+              className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
             >
               <div className="max-w-journal mx-auto px-6 py-3">
                 <div className="flex flex-wrap gap-2">
@@ -220,10 +243,10 @@ export default function Timeline() {
                     <button
                       key={monthKey}
                       onClick={() => scrollToMonth(monthKey)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                       {monthKey}
-                      <span className="text-xs text-gray-400 bg-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                      <span className="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                         {grouped[monthKey].length}
                       </span>
                     </button>
@@ -241,42 +264,40 @@ export default function Timeline() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-gray-100 bg-gray-50/80 overflow-hidden"
+              className="border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 overflow-hidden"
             >
               <div className="max-w-journal mx-auto px-6 py-3 space-y-3">
-                {/* Search input */}
                 <input
                   type="text"
-                  placeholder="搜索日记内容..."
+                  placeholder={t('searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-base placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-base dark:text-white placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
                   autoFocus
                 />
-                {/* Date filters */}
                 <div className="flex gap-3">
                   <select
                     value={filterYear}
                     onChange={(e) => setFilterYear(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400"
                   >
-                    <option value="">全部年份</option>
-                    {years.map(y => <option key={y} value={y}>{y}年</option>)}
+                    <option value="">{t('allYears')}</option>
+                    {years.map(y => <option key={y} value={y}>{formatYear(y)}</option>)}
                   </select>
                   <select
                     value={filterMonth}
                     onChange={(e) => setFilterMonth(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 focus:outline-none focus:border-gray-400"
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-gray-400"
                   >
-                    <option value="">全部月份</option>
-                    {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{i+1}月</option>)}
+                    <option value="">{t('allMonths')}</option>
+                    {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{formatMonth(i+1)}</option>)}
                   </select>
                   {(searchQuery || filterYear || filterMonth) && (
                     <button
                       onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
-                      className="px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-900 transition-colors"
+                      className="px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                     >
-                      清除
+                      {t('clear')}
                     </button>
                   )}
                 </div>
@@ -294,13 +315,13 @@ export default function Timeline() {
             <p className="text-red-400 text-sm mb-4">{loadError}</p>
             <button
               onClick={handleRetry}
-              className="inline-flex items-center gap-2 text-sm text-white bg-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-white bg-gray-900 dark:bg-white dark:text-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M1 7a6 6 0 1 1 1.06 3.39" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 <path d="M1 11V7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              重试
+              {t('retry')}
             </button>
           </div>
         ) : entries.length === 0 ? (
@@ -310,16 +331,16 @@ export default function Timeline() {
             className="text-center py-32"
           >
             <p className="text-6xl mb-6">📝</p>
-            <h2 className="text-lg font-medium text-gray-800 mb-2">开始你的第一篇日记</h2>
-            <p className="text-gray-400 text-sm mb-6">记录生活中的点点滴滴，留住珍贵的回忆</p>
+            <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">{t('startFirstEntry')}</h2>
+            <p className="text-gray-400 dark:text-gray-500 text-sm mb-6">{t('startFirstEntryDesc')}</p>
             <Link
               href="/entry/new"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium px-6 py-3 rounded-full hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
-              写日记
+              {t('writeEntry')}
             </Link>
           </motion.div>
         ) : filteredEntries.length === 0 ? (
@@ -329,12 +350,12 @@ export default function Timeline() {
             className="text-center py-32"
           >
             <p className="text-4xl mb-4">🔍</p>
-            <p className="text-gray-400 text-sm">没有找到匹配的日记</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm">{t('noResults')}</p>
             <button
               onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
-              className="mt-3 text-sm text-gray-900 underline underline-offset-4"
+              className="mt-3 text-sm text-gray-900 dark:text-white underline underline-offset-4"
             >
-              清除筛选
+              {t('clearFilters')}
             </button>
           </motion.div>
         ) : (
@@ -347,23 +368,19 @@ export default function Timeline() {
                 animate={{ opacity: 1 }}
                 className="mb-12 scroll-mt-20"
               >
-                {/* Sticky month header with entry count */}
-                <div className="sticky top-[65px] z-30 -mx-6 px-6 py-3 bg-gray-50/90 backdrop-blur-sm">
+                <div className="sticky top-[65px] z-30 -mx-6 px-6 py-3 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-sm">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-semibold text-gray-700 tracking-wide">
+                    <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 tracking-wide">
                       {month}
                     </h2>
-                    <span className="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 py-0.5">
-                      {monthEntries.length} 篇
+                    <span className="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-2 py-0.5">
+                      {formatEntriesCount(monthEntries.length)}
                     </span>
                   </div>
                 </div>
 
-                {/* Timeline entries with vertical line */}
                 <div className="relative pl-8 mt-4">
-                  {/* Vertical timeline line */}
-                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
-
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200 dark:bg-gray-700" />
                   <div className="space-y-6">
                     {monthEntries.map((entry, i) => (
                       <motion.div
@@ -374,8 +391,7 @@ export default function Timeline() {
                         transition={{ delay: i * 0.05 }}
                         className="relative"
                       >
-                        {/* Timeline dot */}
-                        <div className="absolute -left-8 top-5 w-[15px] h-[15px] rounded-full border-2 border-gray-300 bg-white z-10" />
+                        <div className="absolute -left-8 top-5 w-[15px] h-[15px] rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 z-10" />
                         <EntryCard entry={entry} onDelete={handleDelete} />
                       </motion.div>
                     ))}
@@ -391,7 +407,7 @@ export default function Timeline() {
       {entries.length > 0 && (
         <Link
           href="/entry/new"
-          className="fixed right-5 safe-bottom-fab w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-lg hover:bg-gray-700 active:scale-95 transition-all z-40"
+          className="fixed right-5 safe-bottom-fab w-14 h-14 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center shadow-lg hover:bg-gray-700 dark:hover:bg-gray-200 active:scale-95 transition-all z-40"
         >
           <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

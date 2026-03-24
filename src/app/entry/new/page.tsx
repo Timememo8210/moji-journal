@@ -9,6 +9,7 @@ import { mockEntries } from '@/lib/mock-data'
 import { createEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
@@ -17,6 +18,7 @@ const VoiceInput = dynamic(() => import('@/components/VoiceInput'), { ssr: false
 export default function NewEntry() {
   const router = useRouter()
   const { user, isConfigured, loading: authLoading } = useAuth()
+  const { t } = useI18n()
   const { showToast } = useToast()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -28,21 +30,18 @@ export default function NewEntry() {
   const fileRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<any>(null)
 
-  // Redirect to login if Supabase is configured but user is not logged in
   useEffect(() => {
     if (!authLoading && isConfigured && !user) {
       router.replace('/auth/login?redirect=/entry/new')
     }
   }, [authLoading, isConfigured, user, router])
 
-  // Track unsaved changes
   useEffect(() => {
     if (title.trim() || content.trim() || images.length > 0) {
       setHasUnsavedChanges(true)
     }
   }, [title, content, images])
 
-  // Warn on browser navigation with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -55,7 +54,7 @@ export default function NewEntry() {
 
   const handleBack = () => {
     if (hasUnsavedChanges) {
-      if (confirm('还有未保存的内容，确定要离开吗？')) {
+      if (confirm(t('unsavedWarning'))) {
         router.back()
       }
     } else {
@@ -81,15 +80,15 @@ export default function NewEntry() {
       })
       const data = await res.json()
       if (!res.ok) {
-        showToast(data.error || '整理失败', 'error')
+        showToast(data.error || t('cleanupFailed'), 'error')
         return
       }
-      if (data.cleaned && confirm('AI已整理完成，是否替换当前内容？')) {
+      if (data.cleaned && confirm(t('aiCleanupConfirm'))) {
         setContent(data.cleaned)
-        showToast('内容已整理')
+        showToast(t('contentCleaned'))
       }
     } catch {
-      showToast(navigator.onLine ? '整理失败，请稍后重试' : '网络连接失败', 'error')
+      showToast(navigator.onLine ? t('cleanupFailedRetry') : t('networkError'), 'error')
     } finally {
       setAiLoading(false)
     }
@@ -100,7 +99,6 @@ export default function NewEntry() {
     if (!text.trim() || generatingImage) return
     setGeneratingImage(true)
     try {
-      // Step 1: AI extracts keywords from journal text
       const res = await fetch('/api/ai/image-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,19 +112,17 @@ export default function NewEntry() {
       }
 
       if (!imageUrl) {
-        // Fallback: random beautiful photo from picsum
         imageUrl = `https://picsum.photos/seed/${Date.now()}/800/600`
       }
 
-      // Verify the image loads (follow redirects by fetching the final URL)
       const imgRes = await fetch(imageUrl, { redirect: 'follow' })
-      if (!imgRes.ok) throw new Error('图片加载失败')
+      if (!imgRes.ok) throw new Error(t('imageFailed'))
       const blob = await imgRes.blob()
       imageUrl = URL.createObjectURL(blob)
       setImages((prev) => [...prev, imageUrl])
-      showToast('配图已生成')
+      showToast(t('imageGenerated'))
     } catch {
-      showToast('配图获取失败，请稍后重试', 'error')
+      showToast(t('imageGenFailed'), 'error')
     } finally {
       setGeneratingImage(false)
     }
@@ -135,7 +131,6 @@ export default function NewEntry() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-
     Array.from(files).forEach((file) => {
       const reader = new FileReader()
       reader.onload = (ev) => {
@@ -158,14 +153,12 @@ export default function NewEntry() {
 
     try {
       if (isSupabaseConfigured()) {
-        // Save to Supabase (user_id set automatically via trigger)
-        await createEntry(title || '无题', latestContent, images)
+        await createEntry(title || t('untitled'), latestContent, images)
       } else {
-        // Fallback: localStorage
         const now = new Date().toISOString()
         const newEntry: JournalEntry = {
           id: Date.now().toString(),
-          title: title || '无题',
+          title: title || t('untitled'),
           content: latestContent,
           created_at: now,
           updated_at: now,
@@ -185,21 +178,20 @@ export default function NewEntry() {
         localStorage.setItem('moji-entries', JSON.stringify(entries))
       }
       setHasUnsavedChanges(false)
-      showToast('日记已保存')
+      showToast(t('entrySaved'))
       router.push('/')
     } catch (err) {
-      showToast('保存失败: ' + (err instanceof Error ? err.message : '未知错误'), 'error')
+      showToast(t('saveFailed') + ': ' + (err instanceof Error ? err.message : t('unknownError')), 'error')
       setSaving(false)
     }
   }
 
-  // Show loading while checking auth
   if (authLoading || (isConfigured && !user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">加载中...</p>
+          <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-gray-900 dark:border-t-white rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 dark:text-gray-500 text-sm">{t('loading')}</p>
         </div>
       </div>
     )
@@ -209,48 +201,41 @@ export default function NewEntry() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-screen bg-gray-50 safe-bottom"
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-bottom"
     >
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="text-base text-gray-400 hover:text-gray-900 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-base text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            取消
+            {t('cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving || (!title.trim() && !content.trim())}
-            className="text-base font-medium bg-gray-900 text-white px-6 min-h-[44px] rounded-full hover:bg-gray-700 transition-colors disabled:opacity-30"
+            className="text-base font-medium bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 min-h-[44px] rounded-full hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors disabled:opacity-30"
           >
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('saving') : t('save')}
           </button>
         </div>
       </header>
 
-      <main className="max-w-journal mx-auto px-6 py-8 bg-white rounded-b-2xl min-h-[calc(100vh-65px)]">
-        {/* Title */}
+      <main className="max-w-journal mx-auto px-6 py-8 bg-white dark:bg-gray-900 rounded-b-2xl min-h-[calc(100vh-65px)]">
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="标题"
-          className="w-full text-2xl font-semibold placeholder-gray-300 outline-none mb-6 bg-transparent"
+          placeholder={t('titlePlaceholder')}
+          className="w-full text-2xl font-semibold placeholder-gray-300 dark:placeholder-gray-600 dark:text-white outline-none mb-6 bg-transparent"
           autoFocus
         />
 
-        {/* Images */}
         {images.length > 0 && (
           <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
             {images.map((img, i) => (
               <div key={i} className="relative flex-shrink-0 rounded-xl overflow-hidden group">
-                <img
-                  src={img}
-                  alt=""
-                  className="h-32 w-auto rounded-xl object-cover"
-                />
+                <img src={img} alt="" className="h-32 w-auto rounded-xl object-cover" />
                 <button
                   onClick={() => removeImage(i)}
                   className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
@@ -262,23 +247,22 @@ export default function NewEntry() {
           </div>
         )}
 
-        {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50"
+            className="flex items-center gap-2 text-base text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 active:bg-gray-50 dark:active:bg-gray-800"
           >
             <svg width="22" height="22" viewBox="0 0 18 18" fill="none">
               <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
               <circle cx="7" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.2" />
               <path d="M3 14l4-4 2 2 3-4 4 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            添加照片
+            {t('addPhotos')}
           </button>
           <button
             onClick={handleAiCleanup}
             disabled={aiLoading || !content.trim()}
-            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50 disabled:opacity-30 disabled:hover:border-gray-200"
+            className="flex items-center gap-2 text-base text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 active:bg-gray-50 dark:active:bg-gray-800 disabled:opacity-30 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700"
           >
             {aiLoading ? (
               <svg className="animate-spin" width="20" height="20" viewBox="0 0 16 16" fill="none">
@@ -287,12 +271,12 @@ export default function NewEntry() {
             ) : (
               <span className="text-lg">✨</span>
             )}
-            {aiLoading ? 'AI整理中...' : 'AI整理'}
+            {aiLoading ? t('aiCleaning') : t('aiCleanup')}
           </button>
           <button
             onClick={handleGenerateImage}
             disabled={generatingImage || (!content.trim() && !title.trim())}
-            className="flex items-center gap-2 text-base text-gray-500 hover:text-gray-800 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 hover:border-gray-400 active:bg-gray-50 disabled:opacity-30 disabled:hover:border-gray-200"
+            className="flex items-center gap-2 text-base text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors px-4 min-h-[44px] rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 active:bg-gray-50 dark:active:bg-gray-800 disabled:opacity-30 disabled:hover:border-gray-200 dark:disabled:hover:border-gray-700"
           >
             {generatingImage ? (
               <svg className="animate-spin" width="20" height="20" viewBox="0 0 16 16" fill="none">
@@ -301,14 +285,13 @@ export default function NewEntry() {
             ) : (
               <span className="text-lg">🎨</span>
             )}
-            {generatingImage ? '生成中...' : '生成配图'}
+            {generatingImage ? t('generating') : t('generateImage')}
           </button>
         </div>
-        {/* AI Image Generation Shimmer */}
         {generatingImage && (
           <div className="mb-6">
-            <div className="h-32 w-48 rounded-xl bg-gray-100 animate-pulse flex items-center justify-center">
-              <span className="text-xs text-gray-400">AI 配图生成中...</span>
+            <div className="h-32 w-48 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center">
+              <span className="text-xs text-gray-400 dark:text-gray-500">{t('aiGeneratingImage')}</span>
             </div>
           </div>
         )}
@@ -321,13 +304,11 @@ export default function NewEntry() {
           className="hidden"
         />
 
-        {/* Editor with Voice Input */}
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <Editor
               content={content}
               onChange={setContent}
-              placeholder="写点什么..."
               onEditorReady={(editor: any) => { editorRef.current = editor }}
             />
           </div>

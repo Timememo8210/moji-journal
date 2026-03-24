@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEffect } from 'react'
+import { useI18n } from '@/contexts/I18nContext'
 
 interface EditorProps {
   content: string
@@ -12,11 +13,14 @@ interface EditorProps {
   onEditorReady?: (editor: any) => void
 }
 
-export default function Editor({ content, onChange, placeholder = '写点什么...', onEditorReady }: EditorProps) {
+export default function Editor({ content, onChange, placeholder, onEditorReady }: EditorProps) {
+  const { t } = useI18n()
+  const resolvedPlaceholder = placeholder || t('editorPlaceholder')
+
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder: resolvedPlaceholder }),
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -24,7 +28,7 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
     },
     editorProps: {
       attributes: {
-        class: 'tiptap prose prose-base max-w-none focus:outline-none',
+        class: 'tiptap prose prose-base max-w-none focus:outline-none dark:text-gray-100',
       },
     },
     onCreate: ({ editor }) => {
@@ -32,7 +36,6 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
     },
   })
 
-  // Sync external content changes (e.g. AI cleanup) into the editor
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content, false)
@@ -43,8 +46,7 @@ export default function Editor({ content, onChange, placeholder = '写点什么.
 
   return (
     <div>
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
         <ToolbarButton
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -96,7 +98,9 @@ function ToolbarButton({
       type="button"
       onClick={onClick}
       className={`w-11 h-11 rounded-xl text-base font-medium flex items-center justify-center transition-colors ${
-        active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        active
+          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200'
       }`}
     >
       {children}

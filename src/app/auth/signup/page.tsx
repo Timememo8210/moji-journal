@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { signUp } from '@/lib/auth'
+import { useI18n } from '@/contexts/I18nContext'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -22,7 +24,7 @@ export default function SignupPage() {
     setLoading(true)
 
     if (password.length < 6) {
-      setError('密码至少需要6位')
+      setError(t('passwordTooShort'))
       setLoading(false)
       return
     }
@@ -33,12 +35,10 @@ export default function SignupPage() {
       setError(error.message)
       setLoading(false)
     } else if (data?.user?.identities?.length === 0) {
-      setError('该邮箱已注册，请直接登录')
+      setError(t('emailTaken'))
       setLoading(false)
     } else {
-      // Check if email confirmation is needed
       if (data?.session) {
-        // Auto-logged in (email confirmation disabled)
         router.push('/')
         router.refresh()
       } else {
@@ -57,17 +57,16 @@ export default function SignupPage() {
           className="text-center max-w-sm"
         >
           <div className="text-5xl mb-6">✉️</div>
-          <h2 className="text-white text-xl font-light mb-3">验证邮件已发送</h2>
+          <h2 className="text-white text-xl font-light mb-3">{t('verificationSent')}</h2>
           <p className="text-zinc-500 text-sm leading-relaxed mb-6">
-            请查收 <span className="text-zinc-300">{email}</span> 的验证邮件，
-            点击链接完成注册后即可登录。
+            {t('verificationDesc')}
           </p>
           <Link
             href="/auth/login"
             className="inline-block bg-white text-black text-sm font-medium rounded-lg px-6 py-3 min-h-[48px] leading-[48px]
                        hover:bg-zinc-100 transition-colors"
           >
-            去登录
+            {t('goLogin')}
           </Link>
         </motion.div>
       </div>
@@ -82,18 +81,16 @@ export default function SignupPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-sm"
       >
-        {/* Logo */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-light tracking-[0.3em] text-white mb-2">墨记</h1>
-          <p className="text-zinc-500 text-sm tracking-widest">创建账号</p>
+          <h1 className="text-4xl font-light tracking-[0.3em] text-white mb-2">{t('appName')}</h1>
+          <p className="text-zinc-500 text-sm tracking-widest">{t('createAccount')}</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
               type="text"
-              placeholder="昵称（可选）"
+              placeholder={t('nicknamePlaceholder')}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="w-full bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-600
@@ -104,7 +101,7 @@ export default function SignupPage() {
           <div>
             <input
               type="email"
-              placeholder="邮箱"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -116,7 +113,7 @@ export default function SignupPage() {
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              placeholder="密码（至少6位）"
+              placeholder={t('passwordMinLength')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -160,15 +157,14 @@ export default function SignupPage() {
                        hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                        tracking-wide"
           >
-            {loading ? '注册中...' : '创建账号'}
+            {loading ? t('registering') : t('createAccount')}
           </button>
         </form>
 
-        {/* Login link */}
         <p className="text-center text-zinc-500 text-sm mt-6">
-          已有账号？{' '}
+          {t('haveAccount')}{' '}
           <Link href="/auth/login" className="text-zinc-300 hover:text-white transition-colors">
-            登录
+            {t('login')}
           </Link>
         </p>
       </motion.div>

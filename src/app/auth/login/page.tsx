@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { signIn } from '@/lib/auth'
+import { useI18n } from '@/contexts/I18nContext'
 import { Suspense } from 'react'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/'
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -40,18 +42,16 @@ function LoginForm() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-sm"
       >
-        {/* Logo */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-light tracking-[0.3em] text-white mb-2">墨记</h1>
-          <p className="text-zinc-500 text-sm tracking-widest">MOJI JOURNAL</p>
+          <h1 className="text-4xl font-light tracking-[0.3em] text-white mb-2">{t('appName')}</h1>
+          <p className="text-zinc-500 text-sm tracking-widest">{t('appSubtitle')}</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
               type="email"
-              placeholder="邮箱"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -63,7 +63,7 @@ function LoginForm() {
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              placeholder="密码"
+              placeholder={t('passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -107,29 +107,26 @@ function LoginForm() {
                        hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                        tracking-wide"
           >
-            {loading ? '登录中...' : '登录'}
+            {loading ? t('loggingIn') : t('login')}
           </button>
         </form>
 
-        {/* Forgot password */}
         <p className="text-center mt-4">
           <Link href="#" className="text-zinc-600 text-xs hover:text-zinc-400 transition-colors">
-            忘记密码？
+            {t('forgotPassword')}
           </Link>
         </p>
 
-        {/* Sign up link */}
         <p className="text-center text-zinc-500 text-sm mt-5">
-          还没有账号？{' '}
+          {t('noAccount')}{' '}
           <Link href="/auth/signup" className="text-zinc-300 hover:text-white transition-colors">
-            注册
+            {t('signUp')}
           </Link>
         </p>
 
-        {/* Guest mode hint */}
         <p className="text-center mt-4">
           <Link href="/" className="text-zinc-600 text-xs hover:text-zinc-400 transition-colors">
-            以访客身份继续（本地模式）
+            {t('guestMode')}
           </Link>
         </p>
       </motion.div>

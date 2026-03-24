@@ -14,6 +14,11 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  .dark body,
+  html.dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+
   /* Prevent iOS zoom on input focus */
   input, select, textarea {
     font-size: 16px !important;
@@ -54,13 +59,25 @@
   @apply border-l-2 border-gray-300 pl-4 italic text-gray-600 mb-4;
 }
 
+.dark .tiptap blockquote {
+  @apply border-gray-600 text-gray-400;
+}
+
 .tiptap code {
   @apply bg-gray-100 rounded px-1 py-0.5 text-sm;
+}
+
+.dark .tiptap code {
+  @apply bg-gray-800;
 }
 
 .tiptap p.is-editor-empty:first-child::before {
   @apply text-gray-400 float-left h-0 pointer-events-none;
   content: attr(data-placeholder);
+}
+
+.dark .tiptap p.is-editor-empty:first-child::before {
+  @apply text-gray-600;
 }
 
 /* Scrollbar */
@@ -75,6 +92,13 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-300;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-700;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
 }
 
 /* Page transitions */
