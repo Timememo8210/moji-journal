@@ -25,7 +25,7 @@ export async function getEntries(): Promise<JournalEntry[]> {
   if (!entries) return []
 
   const withMedia = await Promise.all(
-    entries.map(async (entry) => {
+    entries.map(async (entry: Record<string, unknown>) => {
       const { data: media } = await supabase
         .from('media')
         .select('*')

@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createBrowserSupabaseClient()
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: import('@supabase/supabase-js').Session | null } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (_event: import('@supabase/supabase-js').AuthChangeEvent, session: import('@supabase/supabase-js').Session | null) => {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
