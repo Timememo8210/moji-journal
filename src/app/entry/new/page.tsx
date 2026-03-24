@@ -12,7 +12,7 @@ import { isGuestMode } from '@/lib/guest'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
-import { uploadImages } from '@/lib/storage'
+import { uploadImages, uploadImageFile } from '@/lib/storage'
 
 import MoodPicker from '@/components/MoodPicker'
 
@@ -31,6 +31,7 @@ export default function NewEntry() {
   const [aiLoading, setAiLoading] = useState(false)
   const [generatingImage, setGeneratingImage] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [uploadingIndices, setUploadingIndices] = useState<Set<number>>(new Set())
   const [mood, setMood] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -134,18 +135,46 @@ export default function NewEntry() {
     }
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setImages((prev) => [...prev, ev.target!.result as string])
-        }
-      }
-      reader.readAsDataURL(file)
+    const fileArray = Array.from(files)
+
+    // Add placeholder slots and track their indices
+    const startIndex = images.length
+    const placeholders = fileArray.map(() => '')
+    setImages((prev) => [...prev, ...placeholders])
+    setUploadingIndices((prev) => {
+      const next = new Set(prev)
+      fileArray.forEach((_, i) => next.add(startIndex + i))
+      return next
     })
+
+    // Upload each file (to Supabase Storage or base64 fallback)
+    await Promise.all(
+      fileArray.map(async (file, i) => {
+        const idx = startIndex + i
+        try {
+          const url = await uploadImageFile(file)
+          setImages((prev) => prev.map((img, j) => (j === idx ? url : img)))
+        } catch {
+          // Fallback: read as base64
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            if (ev.target?.result) {
+              setImages((prev) => prev.map((img, j) => (j === idx ? (ev.target!.result as string) : img)))
+            }
+          }
+          reader.readAsDataURL(file)
+        } finally {
+          setUploadingIndices((prev) => {
+            const next = new Set(prev)
+            next.delete(idx)
+            return next
+          })
+        }
+      })
+    )
   }
 
   const removeImage = (index: number) => {
@@ -252,7 +281,13 @@ export default function NewEntry() {
           <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
             {images.map((img, i) => (
               <div key={i} className="relative flex-shrink-0 rounded-xl overflow-hidden group">
-                <img src={img} alt="" className="h-32 w-auto rounded-xl object-cover" />
+                {uploadingIndices.has(i) ? (
+                  <div className="h-32 w-32 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 border-t-gray-700 dark:border-t-gray-300 rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <img src={img} alt="" className="h-32 w-auto rounded-xl object-cover" />
+                )}
                 <button
                   onClick={() => removeImage(i)}
                   className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"

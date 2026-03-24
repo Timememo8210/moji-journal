@@ -41,6 +41,58 @@ function base64ToFile(dataUrl: string, filename: string): File {
 }
 
 /**
+ * Upload a File directly to Supabase Storage.
+ * Returns the public URL on success, or falls back to a base64 data URL.
+ */
+export async function uploadImageFile(file: File): Promise<string> {
+  if (!isSupabaseConfigured() || isGuestMode()) {
+    return fileToDataUrl(file)
+  }
+
+  try {
+    const supabase = createBrowserSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session?.user) {
+      return fileToDataUrl(file)
+    }
+
+    const userId = session.user.id
+    const filePath = `${userId}/${Date.now()}_${file.name}`
+
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      console.warn('Image upload failed, falling back to base64:', error.message)
+      return fileToDataUrl(file)
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(filePath)
+
+    return publicUrlData.publicUrl
+  } catch (err) {
+    console.warn('Image upload error, falling back to base64:', err)
+    return fileToDataUrl(file)
+  }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (ev) => resolve(ev.target!.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
  * Upload an image to Supabase Storage.
  * - If it's a base64 data URL, convert and upload to storage
  * - If it's a blob URL, fetch and upload
@@ -63,6 +115,8 @@ export async function uploadImage(
 
   try {
     const supabase = createBrowserSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
     const timestamp = Date.now()
     const random = Math.random().toString(36).slice(2, 8)
     let file: File
@@ -81,7 +135,9 @@ export async function uploadImage(
 
     onProgress?.(10)
 
-    const filePath = `${timestamp}-${random}-${file.name}`
+    const filePath = userId
+      ? `${userId}/${timestamp}_${random}-${file.name}`
+      : `${timestamp}-${random}-${file.name}`
     onProgress?.(30)
 
     const { error } = await supabase.storage
