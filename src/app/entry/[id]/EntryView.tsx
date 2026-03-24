@@ -14,8 +14,10 @@ import { mockEntries } from '@/lib/mock-data'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
+import { uploadImages } from '@/lib/storage'
 import { SkeletonDetail } from '@/components/Skeleton'
 import { useRelativeDate } from '@/lib/relative-date'
+import MoodPicker from '@/components/MoodPicker'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 
@@ -73,6 +75,7 @@ export default function EntryView({ id }: { id: string }) {
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
   const [editImages, setEditImages] = useState<string[]>([])
+  const [editMood, setEditMood] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -120,6 +123,7 @@ export default function EntryView({ id }: { id: string }) {
     setEditTitle(entry.title)
     setEditContent(entry.content)
     setEditImages(entry.media?.filter(m => m.type === 'image').map(m => m.url) || [])
+    setEditMood(entry.mood || '')
     setHasEditChanges(false)
     setEditing(true)
   }
@@ -136,8 +140,14 @@ export default function EntryView({ id }: { id: string }) {
     const latestContent = editorRef.current ? editorRef.current.getHTML() : editContent
     setSaving(true)
     try {
+      // Upload images to cloud storage if applicable
+      let finalImages = editImages
+      if (isSupabaseConfigured() && !isGuestMode() && editImages.length > 0) {
+        finalImages = await uploadImages(editImages)
+      }
+
       if (isSupabaseConfigured() && !isGuestMode()) {
-        await updateEntry(entry.id, editTitle || t('untitled'), latestContent, editImages)
+        await updateEntry(entry.id, editTitle || t('untitled'), latestContent, finalImages, editMood || undefined)
       } else {
         const saved = localStorage.getItem('moji-entries')
         const entries: JournalEntry[] = saved ? JSON.parse(saved) : []
@@ -147,6 +157,7 @@ export default function EntryView({ id }: { id: string }) {
             ...entries[idx],
             title: editTitle || t('untitled'),
             content: latestContent,
+            mood: editMood || undefined,
             updated_at: new Date().toISOString(),
             media: editImages.map((url, i) => ({
               id: `m-${Date.now()}-${i}`,
@@ -353,6 +364,10 @@ export default function EntryView({ id }: { id: string }) {
               ))}
             </div>
           )}
+
+          <div className="mb-6">
+            <MoodPicker value={editMood} onChange={(m) => { setEditMood(m); setHasEditChanges(true) }} />
+          </div>
 
           <Editor
             content={editContent}

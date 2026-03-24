@@ -169,6 +169,36 @@ const translations = {
   skipImport: { zh: '跳过', en: 'Skip' },
   importSuccess: { zh: '导入成功', en: 'Import successful' },
   importFailed: { zh: '导入失败', en: 'Import failed' },
+
+  // On This Day
+  onThisDay: { zh: '今天的回忆', en: 'On This Day' },
+  yearsAgoToday: { zh: '年前的今天', en: ' year(s) ago today' },
+  onThisDayCollapse: { zh: '收起', en: 'Collapse' },
+  onThisDayExpand: { zh: '展开回忆', en: 'Show memories' },
+
+  // Mood Tags
+  mood: { zh: '心情', en: 'Mood' },
+  moodPicker: { zh: '选择心情', en: 'Pick a mood' },
+
+  // Calendar View
+  calendarView: { zh: '日历视图', en: 'Calendar view' },
+  calendarToday: { zh: '今天', en: 'Today' },
+
+  // Image Upload
+  uploadingImage: { zh: '上传图片中...', en: 'Uploading image...' },
+  uploadFailed: { zh: '上传失败，已保存为本地图片', en: 'Upload failed, saved locally' },
+  uploadProgress: { zh: '上传中', en: 'Uploading' },
+
+  // Daily Reminder
+  dailyReminder: { zh: '每日提醒', en: 'Daily Reminder' },
+  dailyReminderDesc: { zh: '在设定时间提醒你写日记', en: 'Remind you to write at a set time' },
+  reminderTime: { zh: '提醒时间', en: 'Reminder time' },
+  reminderEnabled: { zh: '提醒已开启', en: 'Reminder enabled' },
+  reminderDisabled: { zh: '提醒已关闭', en: 'Reminder disabled' },
+  notificationPermissionDenied: { zh: '请在浏览器设置中允许通知', en: 'Please allow notifications in browser settings' },
+  noEntryTodayBanner: { zh: '今天还没有写日记哦 ✍️', en: "You haven't journaled today ✍️" },
+  dismissReminder: { zh: '知道了', en: 'Dismiss' },
+  writeNow: { zh: '去写日记', en: 'Write now' },
 } as const
 
 export type TranslationKey = keyof typeof translations

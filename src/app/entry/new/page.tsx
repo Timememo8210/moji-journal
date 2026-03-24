@@ -12,6 +12,9 @@ import { isGuestMode } from '@/lib/guest'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
+import { uploadImages } from '@/lib/storage'
+
+import MoodPicker from '@/components/MoodPicker'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 const VoiceInput = dynamic(() => import('@/components/VoiceInput'), { ssr: false })
@@ -27,6 +30,8 @@ export default function NewEntry() {
   const [saving, setSaving] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [generatingImage, setGeneratingImage] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
+  const [mood, setMood] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<any>(null)
@@ -153,14 +158,25 @@ export default function NewEntry() {
     setSaving(true)
 
     try {
+      // Upload images to cloud storage if applicable
+      let finalImages = images
+      if (isSupabaseConfigured() && !isGuestMode() && images.length > 0) {
+        setUploadProgress(`${t('uploadingImage')}`)
+        finalImages = await uploadImages(images, (current, total) => {
+          setUploadProgress(`${t('uploadProgress')} ${current}/${total}`)
+        })
+        setUploadProgress('')
+      }
+
       if (isSupabaseConfigured() && !isGuestMode()) {
-        await createEntry(title || t('untitled'), latestContent, images)
+        await createEntry(title || t('untitled'), latestContent, finalImages, mood || undefined)
       } else {
         const now = new Date().toISOString()
         const newEntry: JournalEntry = {
           id: Date.now().toString(),
           title: title || t('untitled'),
           content: latestContent,
+          mood: mood || undefined,
           created_at: now,
           updated_at: now,
           media: images.map((url, i) => ({
@@ -217,7 +233,7 @@ export default function NewEntry() {
             disabled={saving || (!title.trim() && !content.trim())}
             className="text-base font-medium bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 min-h-[44px] rounded-full hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors disabled:opacity-30"
           >
-            {saving ? t('saving') : t('save')}
+            {uploadProgress || (saving ? t('saving') : t('save'))}
           </button>
         </div>
       </header>
@@ -247,6 +263,10 @@ export default function NewEntry() {
             ))}
           </div>
         )}
+
+        <div className="mb-6">
+          <MoodPicker value={mood} onChange={setMood} />
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <button

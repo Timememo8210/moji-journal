@@ -32,6 +32,15 @@ export default function SettingsPage() {
   const [confirmPwd, setConfirmPwd] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
   const [printEntries, setPrintEntries] = useState<JournalEntry[] | null>(null)
+  const [reminderEnabled, setReminderEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('moji-reminder-enabled') === 'true'
+  })
+  const [reminderTime, setReminderTime] = useState(() => {
+    if (typeof window === 'undefined') return '21:00'
+    return localStorage.getItem('moji-reminder-time') || '21:00'
+  })
+  const [notificationDenied, setNotificationDenied] = useState(false)
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || t('user')
 
@@ -111,7 +120,7 @@ export default function SettingsPage() {
 
   const handleClearCache = () => {
     if (!confirm(t('clearCacheConfirm'))) return
-    const keysToKeep = ['moji-lang', 'moji-theme', 'moji-font']
+    const keysToKeep = ['moji-lang', 'moji-theme', 'moji-font', 'moji-reminder-enabled', 'moji-reminder-time']
     const saved: Record<string, string> = {}
     keysToKeep.forEach((k) => {
       const v = localStorage.getItem(k)
@@ -120,6 +129,26 @@ export default function SettingsPage() {
     localStorage.clear()
     Object.entries(saved).forEach(([k, v]) => localStorage.setItem(k, v))
     showToast(t('cacheCleared'))
+  }
+
+  const handleToggleReminder = async (enabled: boolean) => {
+    if (enabled && 'Notification' in window) {
+      const permission = await Notification.requestPermission()
+      if (permission === 'denied') {
+        setNotificationDenied(true)
+        showToast(t('notificationPermissionDenied'), 'error')
+        return
+      }
+      setNotificationDenied(false)
+    }
+    setReminderEnabled(enabled)
+    localStorage.setItem('moji-reminder-enabled', enabled ? 'true' : 'false')
+    showToast(enabled ? t('reminderEnabled') : t('reminderDisabled'))
+  }
+
+  const handleReminderTimeChange = (time: string) => {
+    setReminderTime(time)
+    localStorage.setItem('moji-reminder-time', time)
   }
 
   const themeOptions: { value: Theme; label: string }[] = [
@@ -333,6 +362,44 @@ export default function SettingsPage() {
                 {opt.label}
               </button>
             ))}
+          </div>
+        </Section>
+
+        {/* Daily Reminder */}
+        <Section title={t('dailyReminder')}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('dailyReminder')}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('dailyReminderDesc')}</p>
+              </div>
+              <button
+                onClick={() => handleToggleReminder(!reminderEnabled)}
+                className={`relative w-12 h-7 rounded-full transition-colors ${
+                  reminderEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                    reminderEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {reminderEnabled && (
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-600 dark:text-gray-400">{t('reminderTime')}</label>
+                <input
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => handleReminderTimeChange(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
+                />
+              </div>
+            )}
+            {notificationDenied && (
+              <p className="text-xs text-red-500">{t('notificationPermissionDenied')}</p>
+            )}
           </div>
         </Section>
 

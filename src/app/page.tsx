@@ -20,6 +20,9 @@ import { useToast } from '@/components/Toast'
 import { SkeletonList } from '@/components/Skeleton'
 import { isGuestMode, getGuestEntries } from '@/lib/guest'
 import ImportDialog from '@/components/ImportDialog'
+import OnThisDay from '@/components/OnThisDay'
+import CalendarView from '@/components/CalendarView'
+import DailyReminderBanner from '@/components/DailyReminderBanner'
 
 export default function Timeline() {
   const router = useRouter()
@@ -28,8 +31,10 @@ export default function Timeline() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
+  const [filterDay, setFilterDay] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [showMonthNav, setShowMonthNav] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { user, isConfigured, loading: authLoading } = useAuth()
   const { t, locale } = useI18n()
@@ -94,7 +99,8 @@ export default function Timeline() {
       entry.content.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesYear = !filterYear || date.getFullYear().toString() === filterYear
     const matchesMonth = !filterMonth || (date.getMonth() + 1).toString() === filterMonth
-    return matchesSearch && matchesYear && matchesMonth
+    const matchesDay = !filterDay || date.getDate().toString() === filterDay
+    return matchesSearch && matchesYear && matchesMonth && matchesDay
   })
 
   const years = Array.from(new Set(entries.map(e => new Date(e.created_at).getFullYear()))).sort((a, b) => b - a)
@@ -200,21 +206,33 @@ export default function Timeline() {
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight dark:text-white">{t('appName')}</h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowCalendar(!showCalendar); setShowMonthNav(false); setShowSearch(false) }}
+              className={`w-11 h-11 flex items-center justify-center transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 ${showCalendar ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+              title={t('calendarView')}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M2 7h14" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M6 1v4M12 1v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="6" cy="10.5" r="1" fill="currentColor" />
+                <circle cx="9" cy="10.5" r="1" fill="currentColor" />
+                <circle cx="12" cy="10.5" r="1" fill="currentColor" />
+              </svg>
+            </button>
             {monthKeys.length > 1 && (
               <button
-                onClick={() => setShowMonthNav(!showMonthNav)}
+                onClick={() => { setShowMonthNav(!showMonthNav); setShowCalendar(false); setShowSearch(false) }}
                 className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
                 title={t('monthNav')}
               >
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M2 7h14" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M6 1v4M12 1v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M3 6h12M3 10h12M3 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
             )}
             <button
-              onClick={() => setShowSearch(!showSearch)}
+              onClick={() => { setShowSearch(!showSearch); setShowCalendar(false); setShowMonthNav(false) }}
               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -265,6 +283,24 @@ export default function Timeline() {
           )}
         </AnimatePresence>
 
+        {/* Calendar View */}
+        <AnimatePresence>
+          {showCalendar && (
+            <CalendarView
+              entries={entries}
+              onSelectDate={(dateStr) => {
+                const [y, m, d] = dateStr.split('-')
+                setFilterYear(y)
+                setFilterMonth(String(parseInt(m)))
+                setFilterDay(String(parseInt(d)))
+                setShowCalendar(false)
+                setShowSearch(true)
+              }}
+              onClose={() => setShowCalendar(false)}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Search & Filter Bar */}
         <AnimatePresence>
           {showSearch && (
@@ -300,9 +336,9 @@ export default function Timeline() {
                     <option value="">{t('allMonths')}</option>
                     {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{formatMonth(i+1)}</option>)}
                   </select>
-                  {(searchQuery || filterYear || filterMonth) && (
+                  {(searchQuery || filterYear || filterMonth || filterDay) && (
                     <button
-                      onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
+                      onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth(''); setFilterDay('') }}
                       className="px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                     >
                       {t('clear')}
@@ -317,6 +353,16 @@ export default function Timeline() {
 
       {/* Timeline */}
       <main className="max-w-journal mx-auto px-6 py-8 pb-28">
+        {/* Daily Reminder Banner */}
+        {!loadError && entries.length > 0 && (
+          <DailyReminderBanner entries={entries} />
+        )}
+
+        {/* On This Day */}
+        {!loadError && entries.length > 0 && !searchQuery && !filterYear && !filterMonth && !filterDay && (
+          <OnThisDay entries={entries} />
+        )}
+
         {loadError ? (
           <div className="text-center py-32">
             <p className="text-4xl mb-4">{navigator.onLine ? '😥' : '📡'}</p>
@@ -360,7 +406,7 @@ export default function Timeline() {
             <p className="text-4xl mb-4">🔍</p>
             <p className="text-gray-400 dark:text-gray-500 text-sm">{t('noResults')}</p>
             <button
-              onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth('') }}
+              onClick={() => { setSearchQuery(''); setFilterYear(''); setFilterMonth(''); setFilterDay('') }}
               className="mt-3 text-sm text-gray-900 dark:text-white underline underline-offset-4"
             >
               {t('clearFilters')}

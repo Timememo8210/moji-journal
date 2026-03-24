@@ -97,7 +97,8 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
 export async function createEntry(
   title: string,
   content: string,
-  images: string[]
+  images: string[],
+  mood?: string
 ): Promise<JournalEntry> {
   const now = new Date().toISOString()
 
@@ -106,6 +107,7 @@ export async function createEntry(
       id: Date.now().toString(),
       title,
       content,
+      mood: mood || undefined,
       created_at: now,
       updated_at: now,
       media: images.map((url, i) => ({
@@ -124,9 +126,11 @@ export async function createEntry(
   }
 
   const supabase = getClient()
+  const insertData: Record<string, unknown> = { title, content, created_at: now, updated_at: now }
+  if (mood) insertData.mood = mood
   const { data: entry, error } = await supabase
     .from('entries')
-    .insert({ title, content, created_at: now, updated_at: now })
+    .insert(insertData)
     .select()
     .single()
 
@@ -155,7 +159,8 @@ export async function updateEntry(
   id: string,
   title: string,
   content: string,
-  images: string[]
+  images: string[],
+  mood?: string
 ): Promise<JournalEntry> {
   const now = new Date().toISOString()
 
@@ -166,6 +171,7 @@ export async function updateEntry(
       ...localEntries[idx],
       title,
       content,
+      mood: mood || undefined,
       updated_at: now,
       media: images.map((url, i) => ({
         id: `m-${Date.now()}-${i}`,
@@ -181,9 +187,11 @@ export async function updateEntry(
   }
 
   const supabase = getClient()
+  const updateData: Record<string, unknown> = { title, content, updated_at: now }
+  if (mood !== undefined) updateData.mood = mood || null
   const { data: entry, error } = await supabase
     .from('entries')
-    .update({ title, content, updated_at: now })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single()
