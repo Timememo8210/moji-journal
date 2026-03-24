@@ -183,6 +183,7 @@ const translations = {
   // Calendar View
   calendarView: { zh: '日历视图', en: 'Calendar view' },
   calendarToday: { zh: '今天', en: 'Today' },
+  calendarAll: { zh: '全部', en: 'All' },
 
   // Image Upload
   uploadingImage: { zh: '上传图片中...', en: 'Uploading image...' },

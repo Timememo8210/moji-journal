@@ -207,7 +207,13 @@ export default function Timeline() {
           <h1 className="text-lg font-semibold tracking-tight dark:text-white">{t('appName')}</h1>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { setShowCalendar(!showCalendar); setShowMonthNav(false); setShowSearch(false) }}
+              onClick={() => {
+                const next = !showCalendar
+                setShowCalendar(next)
+                setShowMonthNav(false)
+                setShowSearch(false)
+                if (!next) { setFilterYear(''); setFilterMonth(''); setFilterDay('') }
+              }}
               className={`w-11 h-11 flex items-center justify-center transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 ${showCalendar ? 'text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
               title={t('calendarView')}
             >
@@ -288,13 +294,20 @@ export default function Timeline() {
           {showCalendar && (
             <CalendarView
               entries={entries}
+              selectedDate={filterDay && filterYear && filterMonth
+                ? `${filterYear}-${String(filterMonth).padStart(2, '0')}-${String(filterDay).padStart(2, '0')}`
+                : null}
               onSelectDate={(dateStr) => {
-                const [y, m, d] = dateStr.split('-')
-                setFilterYear(y)
-                setFilterMonth(String(parseInt(m)))
-                setFilterDay(String(parseInt(d)))
-                setShowCalendar(false)
-                setShowSearch(true)
+                if (dateStr) {
+                  const [y, m, d] = dateStr.split('-')
+                  setFilterYear(y)
+                  setFilterMonth(String(parseInt(m)))
+                  setFilterDay(String(parseInt(d)))
+                } else {
+                  setFilterYear('')
+                  setFilterMonth('')
+                  setFilterDay('')
+                }
               }}
               onClose={() => setShowCalendar(false)}
             />
