@@ -134,6 +134,16 @@ const translations = {
   loginToManage: { zh: '登录以管理账户', en: 'Login to manage account' },
   update: { zh: '更新', en: 'Update' },
   unknownError: { zh: '未知错误', en: 'Unknown error' },
+
+  // Share
+  share: { zh: '分享', en: 'Share' },
+  copyLink: { zh: '复制链接', en: 'Copy link' },
+  linkCopied: { zh: '链接已复制', en: 'Link copied' },
+  wechat: { zh: '微信', en: 'WeChat' },
+  weibo: { zh: '微博', en: 'Weibo' },
+  scanToShare: { zh: '用微信扫一扫分享', en: 'Scan with WeChat to share' },
+  shareFrom: { zh: '— 来自墨记 moji.app', en: '— from Moji Journal' },
+  shareFailed: { zh: '分享失败', en: 'Share failed' },
 } as const
 
 export type TranslationKey = keyof typeof translations
