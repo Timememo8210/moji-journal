@@ -11,9 +11,10 @@ interface EditorProps {
   onChange: (html: string) => void
   placeholder?: string
   onEditorReady?: (editor: any) => void
+  extraToolbar?: React.ReactNode
 }
 
-export default function Editor({ content, onChange, placeholder, onEditorReady }: EditorProps) {
+export default function Editor({ content, onChange, placeholder, onEditorReady, extraToolbar }: EditorProps) {
   const { t } = useI18n()
   const resolvedPlaceholder = placeholder || t('editorPlaceholder')
 
@@ -46,7 +47,7 @@ export default function Editor({ content, onChange, placeholder, onEditorReady }
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-700">
         <ToolbarButton
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -77,6 +78,7 @@ export default function Editor({ content, onChange, placeholder, onEditorReady }
         >
           •
         </ToolbarButton>
+        {extraToolbar && <div className="flex items-center gap-2 ml-auto">{extraToolbar}</div>}
       </div>
 
       <EditorContent editor={editor} />

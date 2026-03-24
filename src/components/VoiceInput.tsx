@@ -89,7 +89,7 @@ export default function VoiceInput({ onTranscript, onInterim }: VoiceInputProps)
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={toggleLang}

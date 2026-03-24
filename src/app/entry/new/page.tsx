@@ -205,7 +205,7 @@ export default function NewEntry() {
       className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-bottom"
     >
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800">
-        <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-journal mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <button
             onClick={handleBack}
             className="text-base text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -222,7 +222,7 @@ export default function NewEntry() {
         </div>
       </header>
 
-      <main className="max-w-journal mx-auto px-6 py-8 bg-white dark:bg-gray-900 rounded-b-2xl min-h-[calc(100vh-65px)]">
+      <main className="max-w-journal mx-auto px-4 sm:px-6 py-8 bg-white dark:bg-gray-900 rounded-b-2xl min-h-[calc(100vh-65px)] overflow-hidden">
         <input
           type="text"
           value={title}
@@ -305,17 +305,13 @@ export default function NewEntry() {
           className="hidden"
         />
 
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <Editor
-              content={content}
-              onChange={setContent}
-              onEditorReady={(editor: any) => { editorRef.current = editor }}
-            />
-          </div>
-          <div className="pt-1">
-            <VoiceInput onTranscript={handleVoiceTranscript} />
-          </div>
+        <div className="min-w-0">
+          <Editor
+            content={content}
+            onChange={setContent}
+            onEditorReady={(editor: any) => { editorRef.current = editor }}
+            extraToolbar={<VoiceInput onTranscript={handleVoiceTranscript} />}
+          />
         </div>
       </main>
     </motion.div>
