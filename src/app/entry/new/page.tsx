@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
@@ -8,12 +8,14 @@ import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
 import { createEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 const VoiceInput = dynamic(() => import('@/components/VoiceInput'), { ssr: false })
 
 export default function NewEntry() {
   const router = useRouter()
+  const { user, isConfigured, loading: authLoading } = useAuth()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [images, setImages] = useState<string[]>([])
@@ -22,6 +24,13 @@ export default function NewEntry() {
   const [generatingImage, setGeneratingImage] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<any>(null)
+
+  // Redirect to login if Supabase is configured but user is not logged in
+  useEffect(() => {
+    if (!authLoading && isConfigured && !user) {
+      router.replace('/auth/login')
+    }
+  }, [authLoading, isConfigured, user, router])
 
   const handleVoiceTranscript = useCallback((text: string) => {
     const editor = editorRef.current
@@ -149,6 +158,18 @@ export default function NewEntry() {
       alert('保存失败: ' + (err instanceof Error ? err.message : '未知错误'))
       setSaving(false)
     }
+  }
+
+  // Show loading while checking auth
+  if (authLoading || (isConfigured && !user)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">加载中...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

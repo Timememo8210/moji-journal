@@ -15,30 +15,51 @@ export default function EntryView({ id }: { id: string }) {
   const router = useRouter()
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [notFound, setNotFound] = useState(false)
-  const { loading: authLoading, user } = useAuth()
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const { loading: authLoading, user, isConfigured } = useAuth()
 
   useEffect(() => {
     // Wait for auth to initialize before loading
     if (authLoading) return
 
+    // Redirect to login if Supabase is configured but user is not logged in
+    if (isConfigured && !user) {
+      router.replace('/auth/login')
+      return
+    }
+
     async function load() {
-      if (isSupabaseConfigured()) {
-        const data = await getEntry(id)
-        if (data) {
-          setEntry(data)
+      try {
+        setLoadError(null)
+        if (isSupabaseConfigured()) {
+          const data = await getEntry(id)
+          if (data) {
+            setEntry(data)
+          } else {
+            setNotFound(true)
+          }
         } else {
-          setNotFound(true)
+          const saved = localStorage.getItem('moji-entries')
+          const entries: JournalEntry[] = saved ? JSON.parse(saved) : mockEntries
+          const found = entries.find((e) => e.id === id)
+          setEntry(found || null)
+          if (!found) setNotFound(true)
         }
-      } else {
-        const saved = localStorage.getItem('moji-entries')
-        const entries: JournalEntry[] = saved ? JSON.parse(saved) : mockEntries
-        const found = entries.find((e) => e.id === id)
-        setEntry(found || null)
-        if (!found) setNotFound(true)
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : '加载失败')
       }
     }
     load()
-  }, [id, authLoading, user])
+  }, [id, authLoading, user, isConfigured, router])
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <p className="text-red-400 text-sm">{loadError}</p>
+        <button onClick={() => window.location.reload()} className="text-sm text-gray-900 underline underline-offset-4">重试</button>
+      </div>
+    )
+  }
 
   if (notFound) {
     return (
@@ -52,7 +73,10 @@ export default function EntryView({ id }: { id: string }) {
   if (!entry) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-400 text-sm">加载中...</p>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">加载中...</p>
+        </div>
       </div>
     )
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { JournalEntry } from '@/types'
@@ -14,39 +15,52 @@ import UserMenu from '@/components/UserMenu'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Timeline() {
+  const router = useRouter()
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const { user, isConfigured, loading: authLoading } = useAuth()
 
   useEffect(() => {
     if (authLoading) return
 
+    // Redirect to login if Supabase is configured but user is not logged in
+    if (isConfigured && !user) {
+      router.replace('/auth/login')
+      return
+    }
+
     async function loadEntries() {
-      if (isConfigured) {
-        // Load from Supabase (user-specific via RLS)
-        const data = await getEntries()
-        setEntries(data)
-      } else {
-        // Fallback: localStorage or mock data
-        const saved = localStorage.getItem('moji-entries')
-        if (saved) {
-          setEntries(JSON.parse(saved))
+      try {
+        setLoadError(null)
+        if (isConfigured) {
+          // Load from Supabase (user-specific via RLS)
+          const data = await getEntries()
+          setEntries(data)
         } else {
-          setEntries(
-            [...mockEntries].sort(
-              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          // Fallback: localStorage or mock data
+          const saved = localStorage.getItem('moji-entries')
+          if (saved) {
+            setEntries(JSON.parse(saved))
+          } else {
+            setEntries(
+              [...mockEntries].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )
             )
-          )
+          }
         }
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : '加载失败')
       }
       setMounted(true)
     }
     loadEntries()
-  }, [user, isConfigured, authLoading])
+  }, [user, isConfigured, authLoading, router])
 
   // Filter entries
   const filteredEntries = entries.filter((entry) => {
@@ -91,7 +105,16 @@ export default function Timeline() {
     return acc
   }, {})
 
-  if (!mounted) return null
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">加载中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -183,7 +206,17 @@ export default function Timeline() {
 
       {/* Timeline */}
       <main className="max-w-journal mx-auto px-6 py-8">
-        {entries.length === 0 ? (
+        {loadError ? (
+          <div className="text-center py-32">
+            <p className="text-red-400 text-sm mb-4">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-gray-900 underline underline-offset-4"
+            >
+              重试
+            </button>
+          </div>
+        ) : entries.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

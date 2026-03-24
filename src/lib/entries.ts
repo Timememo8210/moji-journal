@@ -17,20 +17,27 @@ export async function getEntries(): Promise<JournalEntry[]> {
   }
 
   const supabase = getClient()
-  const { data: entries } = await supabase
+  const { data: entries, error } = await supabase
     .from('entries')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`加载日记失败: ${error.message}`)
+  }
 
   if (!entries) return []
 
   const withMedia = await Promise.all(
     entries.map(async (entry: Record<string, unknown>) => {
-      const { data: media } = await supabase
+      const { data: media, error: mediaError } = await supabase
         .from('media')
         .select('*')
         .eq('entry_id', entry.id)
         .order('position')
+      if (mediaError) {
+        console.warn(`加载媒体失败 (entry ${entry.id}):`, mediaError.message)
+      }
       return { ...entry, media: media || [] }
     })
   )
@@ -44,11 +51,16 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
   }
 
   const supabase = getClient()
-  const { data: entry } = await supabase
+  const { data: entry, error } = await supabase
     .from('entries')
     .select('*')
     .eq('id', id)
     .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null // not found
+    throw new Error(`加载日记失败: ${error.message}`)
+  }
 
   if (!entry) return null
 
@@ -90,14 +102,18 @@ export async function createEntry(
   }
 
   const supabase = getClient()
-  const { data: entry } = await supabase
+  const { data: entry, error } = await supabase
     .from('entries')
     .insert({ title, content, created_at: now, updated_at: now })
     .select()
     .single()
 
+  if (error) {
+    throw new Error(`保存日记失败: ${error.message}`)
+  }
+
   if (entry && images.length > 0) {
-    await supabase.from('media').insert(
+    const { error: mediaError } = await supabase.from('media').insert(
       images.map((url, i) => ({
         entry_id: entry.id,
         type: 'image',
@@ -105,6 +121,9 @@ export async function createEntry(
         position: i,
       }))
     )
+    if (mediaError) {
+      console.warn('保存图片失败:', mediaError.message)
+    }
   }
 
   return { ...entry!, media: [] }
@@ -117,8 +136,14 @@ export async function deleteEntry(id: string): Promise<void> {
   }
 
   const supabase = getClient()
-  await supabase.from('media').delete().eq('entry_id', id)
-  await supabase.from('entries').delete().eq('id', id)
+  const { error: mediaError } = await supabase.from('media').delete().eq('entry_id', id)
+  if (mediaError) {
+    console.warn('删除媒体失败:', mediaError.message)
+  }
+  const { error } = await supabase.from('entries').delete().eq('id', id)
+  if (error) {
+    throw new Error(`删除日记失败: ${error.message}`)
+  }
 }
 
 export function exportEntries(entries: JournalEntry[]): string {
