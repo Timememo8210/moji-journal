@@ -129,6 +129,62 @@ export async function createEntry(
   return { ...entry!, media: [] }
 }
 
+export async function updateEntry(
+  id: string,
+  title: string,
+  content: string,
+  images: string[]
+): Promise<JournalEntry> {
+  const now = new Date().toISOString()
+
+  if (!isSupabaseConfigured()) {
+    const idx = localEntries.findIndex((e) => e.id === id)
+    if (idx === -1) throw new Error('日记不存在')
+    localEntries[idx] = {
+      ...localEntries[idx],
+      title,
+      content,
+      updated_at: now,
+      media: images.map((url, i) => ({
+        id: `m-${Date.now()}-${i}`,
+        entry_id: id,
+        type: 'image' as const,
+        url,
+        position: i,
+        created_at: now,
+      })),
+    }
+    return localEntries[idx]
+  }
+
+  const supabase = getClient()
+  const { data: entry, error } = await supabase
+    .from('entries')
+    .update({ title, content, updated_at: now })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`更新日记失败: ${error.message}`)
+  }
+
+  // Replace media: delete old, insert new
+  await supabase.from('media').delete().eq('entry_id', id)
+  if (images.length > 0) {
+    await supabase.from('media').insert(
+      images.map((url, i) => ({
+        entry_id: id,
+        type: 'image',
+        url,
+        position: i,
+      }))
+    )
+  }
+
+  return { ...entry!, media: [] }
+}
+
 export async function deleteEntry(id: string): Promise<void> {
   if (!isSupabaseConfigured()) {
     localEntries = localEntries.filter((e) => e.id !== id)
