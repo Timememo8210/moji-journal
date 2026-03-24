@@ -29,10 +29,10 @@ export default function DailyReminderBanner({ entries }: DailyReminderBannerProp
     // Only show if current time is past the reminder time
     if (now < reminderDate) return
 
-    // Check if already dismissed today
-    const dismissedDate = localStorage.getItem('moji-reminder-dismissed-date')
+    // Check if already shown/dismissed today
+    const shownDate = localStorage.getItem('moji-reminder-shown-date')
     const todayStr = now.toISOString().split('T')[0]
-    if (dismissedDate === todayStr) return
+    if (shownDate === todayStr) return
 
     // Check if user has written an entry today
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -50,7 +50,7 @@ export default function DailyReminderBanner({ entries }: DailyReminderBannerProp
   const handleDismiss = () => {
     setDismissed(true)
     const today = new Date().toISOString().split('T')[0]
-    localStorage.setItem('moji-reminder-dismissed-date', today)
+    localStorage.setItem('moji-reminder-shown-date', today)
     setTimeout(() => setShow(false), 300)
   }
 
@@ -63,24 +63,27 @@ export default function DailyReminderBanner({ entries }: DailyReminderBannerProp
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="mb-6 rounded-2xl border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 p-4"
+          className="mb-6 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/20 p-4"
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-blue-800 dark:text-blue-300 flex-1">
+            <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">
               {t('noEntryTodayBanner')}
             </p>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Link
                 href="/entry/new"
-                className="text-xs font-medium text-white bg-blue-600 dark:bg-blue-500 px-4 py-2 rounded-full hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors min-h-[44px] flex items-center"
+                className="text-xs font-medium text-white bg-amber-600 dark:bg-amber-500 px-4 py-2 rounded-full hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors min-h-[44px] flex items-center"
               >
                 {t('writeNow')}
               </Link>
               <button
                 onClick={handleDismiss}
-                className="text-xs text-blue-600/70 dark:text-blue-400/60 hover:text-blue-800 dark:hover:text-blue-300 transition-colors px-3 py-2 min-h-[44px] flex items-center"
+                className="text-amber-600/70 dark:text-amber-400/60 hover:text-amber-800 dark:hover:text-amber-300 transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label={t('dismissReminder')}
               >
-                {t('dismissReminder')}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
               </button>
             </div>
           </div>

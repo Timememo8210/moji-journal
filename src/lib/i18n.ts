@@ -199,7 +199,7 @@ const translations = {
   notificationPermissionDenied: { zh: '请在浏览器设置中允许通知', en: 'Please allow notifications in browser settings' },
   noEntryTodayBanner: { zh: '今天还没有写日记哦 ✍️', en: "You haven't journaled today ✍️" },
   dismissReminder: { zh: '知道了', en: 'Dismiss' },
-  writeNow: { zh: '去写日记', en: 'Write now' },
+  writeNow: { zh: '开始写', en: 'Start Writing' },
 } as const
 
 export type TranslationKey = keyof typeof translations
