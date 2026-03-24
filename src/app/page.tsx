@@ -20,9 +20,11 @@ export default function Timeline() {
   const [filterYear, setFilterYear] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const { user, isConfigured } = useAuth()
+  const { user, isConfigured, loading: authLoading } = useAuth()
 
   useEffect(() => {
+    if (authLoading) return
+
     async function loadEntries() {
       if (isConfigured) {
         // Load from Supabase (user-specific via RLS)
@@ -44,7 +46,7 @@ export default function Timeline() {
       setMounted(true)
     }
     loadEntries()
-  }, [user, isConfigured])
+  }, [user, isConfigured, authLoading])
 
   // Filter entries
   const filteredEntries = entries.filter((entry) => {

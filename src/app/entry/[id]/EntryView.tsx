@@ -9,13 +9,18 @@ import { JournalEntry } from '@/types'
 import { getEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { mockEntries } from '@/lib/mock-data'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function EntryView({ id }: { id: string }) {
   const router = useRouter()
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const { loading: authLoading, user } = useAuth()
 
   useEffect(() => {
+    // Wait for auth to initialize before loading
+    if (authLoading) return
+
     async function load() {
       if (isSupabaseConfigured()) {
         const data = await getEntry(id)
@@ -33,7 +38,7 @@ export default function EntryView({ id }: { id: string }) {
       }
     }
     load()
-  }, [id])
+  }, [id, authLoading, user])
 
   if (notFound) {
     return (
