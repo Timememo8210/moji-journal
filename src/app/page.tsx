@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
@@ -92,7 +92,7 @@ export default function Timeline() {
     loadEntries()
   }, [user, isConfigured, authLoading, router, t])
 
-  const filteredEntries = entries.filter((entry) => {
+  const filteredEntries = useMemo(() => entries.filter((entry) => {
     const date = new Date(entry.created_at)
     const matchesSearch = !searchQuery ||
       entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -101,11 +101,11 @@ export default function Timeline() {
     const matchesMonth = !filterMonth || (date.getMonth() + 1).toString() === filterMonth
     const matchesDay = !filterDay || date.getDate().toString() === filterDay
     return matchesSearch && matchesYear && matchesMonth && matchesDay
-  })
+  }), [entries, searchQuery, filterYear, filterMonth, filterDay])
 
-  const years = Array.from(new Set(entries.map(e => new Date(e.created_at).getFullYear()))).sort((a, b) => b - a)
+  const years = useMemo(() => Array.from(new Set(entries.map(e => new Date(e.created_at).getFullYear()))).sort((a, b) => b - a), [entries])
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
     try {
       await deleteEntry(id)
@@ -113,7 +113,7 @@ export default function Timeline() {
     } catch {
       showToast(t('deleteFailed'), 'error')
     }
-  }
+  }, [showToast, t])
 
   const handleRetry = async () => {
     setLoadError(null)
@@ -146,14 +146,14 @@ export default function Timeline() {
     return format(date, 'MMMM yyyy', { locale: enUS })
   }
 
-  const grouped = filteredEntries.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
+  const grouped = useMemo(() => filteredEntries.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
     const key = formatMonthKey(entry.created_at)
     if (!acc[key]) acc[key] = []
     acc[key].push(entry)
     return acc
-  }, {})
+  }, {}), [filteredEntries, locale])
 
-  const monthKeys = Object.keys(grouped)
+  const monthKeys = useMemo(() => Object.keys(grouped), [grouped])
 
   const formatYear = (y: number) => locale === 'zh' ? `${y}年` : `${y}`
   const formatMonth = (m: number) => {

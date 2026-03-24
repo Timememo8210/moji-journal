@@ -40,7 +40,7 @@ export async function getEntries(): Promise<JournalEntry[]> {
   const supabase = getClient()
   const { data: entries, error } = await supabase
     .from('entries')
-    .select('*')
+    .select('*, media(*)')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -49,21 +49,15 @@ export async function getEntries(): Promise<JournalEntry[]> {
 
   if (!entries) return []
 
-  const withMedia = await Promise.all(
-    entries.map(async (entry: Record<string, unknown>) => {
-      const { data: media, error: mediaError } = await supabase
-        .from('media')
-        .select('*')
-        .eq('entry_id', entry.id)
-        .order('position')
-      if (mediaError) {
-        console.warn(`加载媒体失败 (entry ${entry.id}):`, mediaError.message)
-      }
-      return { ...entry, media: media || [] }
-    })
-  )
-
-  return withMedia
+  // Sort media by position within each entry
+  return entries.map((entry: Record<string, unknown>) => ({
+    ...entry,
+    media: Array.isArray(entry.media)
+      ? (entry.media as Record<string, unknown>[]).sort(
+          (a, b) => ((a.position as number) || 0) - ((b.position as number) || 0)
+        )
+      : [],
+  }))
 }
 
 export async function getEntry(id: string): Promise<JournalEntry | null> {
@@ -74,7 +68,7 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
   const supabase = getClient()
   const { data: entry, error } = await supabase
     .from('entries')
-    .select('*')
+    .select('*, media(*)')
     .eq('id', id)
     .single()
 
@@ -85,13 +79,14 @@ export async function getEntry(id: string): Promise<JournalEntry | null> {
 
   if (!entry) return null
 
-  const { data: media } = await supabase
-    .from('media')
-    .select('*')
-    .eq('entry_id', id)
-    .order('position')
-
-  return { ...entry, media: media || [] }
+  return {
+    ...entry,
+    media: Array.isArray(entry.media)
+      ? (entry.media as Record<string, unknown>[]).sort(
+          (a, b) => ((a.position as number) || 0) - ((b.position as number) || 0)
+        )
+      : [],
+  }
 }
 
 export async function createEntry(
