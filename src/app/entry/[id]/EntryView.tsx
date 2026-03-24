@@ -6,18 +6,43 @@ import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { JournalEntry } from '@/types'
+import { getEntry } from '@/lib/entries'
+import { isSupabaseConfigured } from '@/lib/supabase'
 import { mockEntries } from '@/lib/mock-data'
 
 export default function EntryView({ id }: { id: string }) {
   const router = useRouter()
   const [entry, setEntry] = useState<JournalEntry | null>(null)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('moji-entries')
-    const entries: JournalEntry[] = saved ? JSON.parse(saved) : mockEntries
-    const found = entries.find((e) => e.id === id)
-    setEntry(found || null)
+    async function load() {
+      if (isSupabaseConfigured()) {
+        const data = await getEntry(id)
+        if (data) {
+          setEntry(data)
+        } else {
+          setNotFound(true)
+        }
+      } else {
+        const saved = localStorage.getItem('moji-entries')
+        const entries: JournalEntry[] = saved ? JSON.parse(saved) : mockEntries
+        const found = entries.find((e) => e.id === id)
+        setEntry(found || null)
+        if (!found) setNotFound(true)
+      }
+    }
+    load()
   }, [id])
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <p className="text-gray-400 text-sm">找不到这篇日记</p>
+        <button onClick={() => router.push('/')} className="text-sm text-gray-900 underline underline-offset-4">返回首页</button>
+      </div>
+    )
+  }
 
   if (!entry) {
     return (

@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
-import { getEntries, exportEntries } from '@/lib/entries'
+import { getEntries, deleteEntry, exportEntries } from '@/lib/entries'
+import { isSupabaseConfigured } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import EntryCard from '@/components/EntryCard'
@@ -70,10 +71,14 @@ export default function Timeline() {
     URL.revokeObjectURL(url)
   }
 
-  const handleDelete = (id: string) => {
-    const updated = entries.filter((e) => e.id !== id)
-    setEntries(updated)
-    localStorage.setItem('moji-entries', JSON.stringify(updated))
+  const handleDelete = async (id: string) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id))
+    if (isSupabaseConfigured()) {
+      await deleteEntry(id)
+    } else {
+      const updated = entries.filter((e) => e.id !== id)
+      localStorage.setItem('moji-entries', JSON.stringify(updated))
+    }
   }
 
   // Group entries by month
