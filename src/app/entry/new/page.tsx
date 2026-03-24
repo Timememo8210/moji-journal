@@ -114,17 +114,15 @@ export default function NewEntry() {
       }
 
       if (!imageUrl) {
-        imageUrl = `https://source.unsplash.com/800x600/?journal,aesthetic`
+        // Fallback: random beautiful photo from picsum
+        imageUrl = `https://picsum.photos/seed/${Date.now()}/800/600`
       }
 
-      // Verify the image loads
-      await new Promise<void>((resolve, reject) => {
-        const img = new window.Image()
-        img.onload = () => resolve()
-        img.onerror = () => reject(new Error('图片加载失败'))
-        img.src = imageUrl
-        setTimeout(() => resolve(), 10000)
-      })
+      // Verify the image loads (follow redirects by fetching the final URL)
+      const imgRes = await fetch(imageUrl, { redirect: 'follow' })
+      if (!imgRes.ok) throw new Error('图片加载失败')
+      const blob = await imgRes.blob()
+      imageUrl = URL.createObjectURL(blob)
       setImages((prev) => [...prev, imageUrl])
       showToast('配图已生成')
     } catch {
