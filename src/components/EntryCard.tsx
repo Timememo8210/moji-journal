@@ -23,7 +23,7 @@ export default function EntryCard({
 
   return (
     <Link href={`/entry/${entry.id}`} className="block group">
-      <article className="relative rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 transition-all hover:shadow-sm">
+      <article className="relative rounded-2xl border border-gray-100 bg-white overflow-hidden hover:border-gray-200 transition-all hover:shadow-sm">
         {/* Hero image */}
         {heroImage && (
           <div className="aspect-[16/9] overflow-hidden bg-gray-50">

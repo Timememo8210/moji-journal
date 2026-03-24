@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
@@ -24,9 +24,11 @@ export default function Timeline() {
   const [filterYear, setFilterYear] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [showMonthNav, setShowMonthNav] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { user, isConfigured, loading: authLoading } = useAuth()
   const { showToast } = useToast()
+  const monthRefs = useRef<Record<string, HTMLElement | null>>({})
 
   useEffect(() => {
     if (authLoading) return
@@ -122,6 +124,14 @@ export default function Timeline() {
     setMounted(true)
   }
 
+  const scrollToMonth = (monthKey: string) => {
+    const el = monthRefs.current[monthKey]
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setShowMonthNav(false)
+    }
+  }
+
   // Group entries by month
   const grouped = filteredEntries.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
     const key = format(new Date(entry.created_at), 'yyyy年M月', { locale: zhCN })
@@ -130,9 +140,11 @@ export default function Timeline() {
     return acc
   }, {})
 
+  const monthKeys = Object.keys(grouped)
+
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
           <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
             <h1 className="text-lg font-semibold tracking-tight">墨记</h1>
@@ -153,13 +165,27 @@ export default function Timeline() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-white safe-bottom"
+      className="min-h-screen bg-gray-50 safe-bottom"
     >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight">墨记</h1>
           <div className="flex items-center gap-3">
+            {/* Month nav toggle */}
+            {monthKeys.length > 1 && (
+              <button
+                onClick={() => setShowMonthNav(!showMonthNav)}
+                className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
+                title="月份导航"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M2 7h14" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M6 1v4M12 1v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={() => setShowSearch(!showSearch)}
               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-50 active:bg-gray-100"
@@ -179,6 +205,35 @@ export default function Timeline() {
           </div>
         </div>
 
+        {/* Month quick-jump bar */}
+        <AnimatePresence>
+          {showMonthNav && monthKeys.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-gray-100 bg-white overflow-hidden"
+            >
+              <div className="max-w-journal mx-auto px-6 py-3">
+                <div className="flex flex-wrap gap-2">
+                  {monthKeys.map((monthKey) => (
+                    <button
+                      key={monthKey}
+                      onClick={() => scrollToMonth(monthKey)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                    >
+                      {monthKey}
+                      <span className="text-xs text-gray-400 bg-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                        {grouped[monthKey].length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Search & Filter Bar */}
         <AnimatePresence>
           {showSearch && (
@@ -186,7 +241,7 @@ export default function Timeline() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-gray-50 bg-gray-50/50 overflow-hidden"
+              className="border-t border-gray-100 bg-gray-50/80 overflow-hidden"
             >
               <div className="max-w-journal mx-auto px-6 py-3 space-y-3">
                 {/* Search input */}
@@ -287,25 +342,44 @@ export default function Timeline() {
             {Object.entries(grouped).map(([month, monthEntries]) => (
               <motion.section
                 key={month}
+                ref={(el) => { monthRefs.current[month] = el }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mb-12"
+                className="mb-12 scroll-mt-20"
               >
-                <h2 className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-6">
-                  {month}
-                </h2>
-                <div className="space-y-6">
-                  {monthEntries.map((entry, i) => (
-                    <motion.div
-                      key={entry.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: i * 0.05 }}
-                    >
-                      <EntryCard entry={entry} onDelete={handleDelete} />
-                    </motion.div>
-                  ))}
+                {/* Sticky month header with entry count */}
+                <div className="sticky top-[65px] z-30 -mx-6 px-6 py-3 bg-gray-50/90 backdrop-blur-sm">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-sm font-semibold text-gray-700 tracking-wide">
+                      {month}
+                    </h2>
+                    <span className="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+                      {monthEntries.length} 篇
+                    </span>
+                  </div>
+                </div>
+
+                {/* Timeline entries with vertical line */}
+                <div className="relative pl-8 mt-4">
+                  {/* Vertical timeline line */}
+                  <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
+
+                  <div className="space-y-6">
+                    {monthEntries.map((entry, i) => (
+                      <motion.div
+                        key={entry.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="relative"
+                      >
+                        {/* Timeline dot */}
+                        <div className="absolute -left-8 top-5 w-[15px] h-[15px] rounded-full border-2 border-gray-300 bg-white z-10" />
+                        <EntryCard entry={entry} onDelete={handleDelete} />
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
               </motion.section>
             ))}

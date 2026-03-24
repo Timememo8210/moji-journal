@@ -198,7 +198,7 @@ export default function NewEntry() {
   // Show loading while checking auth
   if (authLoading || (isConfigured && !user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
           <p className="text-gray-400 text-sm">加载中...</p>
@@ -211,7 +211,7 @@ export default function NewEntry() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-screen bg-white safe-bottom"
+      className="min-h-screen bg-gray-50 safe-bottom"
     >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
@@ -232,7 +232,7 @@ export default function NewEntry() {
         </div>
       </header>
 
-      <main className="max-w-journal mx-auto px-6 py-8">
+      <main className="max-w-journal mx-auto px-6 py-8 bg-white rounded-b-2xl min-h-[calc(100vh-65px)]">
         {/* Title */}
         <input
           type="text"

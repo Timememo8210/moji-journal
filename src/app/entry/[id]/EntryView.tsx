@@ -188,7 +188,7 @@ export default function EntryView({ id }: { id: string }) {
 
   if (!entry) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
           <div className="max-w-journal mx-auto px-6 py-4">
             <div className="w-12 h-4 bg-gray-100 rounded-full animate-pulse" />
@@ -204,7 +204,7 @@ export default function EntryView({ id }: { id: string }) {
 
   if (editing) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-white safe-bottom">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gray-50 safe-bottom">
         <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
           <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
             <button
@@ -223,7 +223,7 @@ export default function EntryView({ id }: { id: string }) {
           </div>
         </header>
 
-        <main className="max-w-journal mx-auto px-6 py-8">
+        <main className="max-w-journal mx-auto px-6 py-8 bg-white rounded-b-2xl min-h-[calc(100vh-65px)]">
           <input
             type="text"
             value={editTitle}
@@ -264,7 +264,7 @@ export default function EntryView({ id }: { id: string }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-white safe-bottom"
+      className="min-h-screen bg-gray-50 safe-bottom"
     >
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
@@ -325,7 +325,7 @@ export default function EntryView({ id }: { id: string }) {
         </div>
       </header>
 
-      <main className="max-w-journal mx-auto px-6 py-8">
+      <main className="max-w-journal mx-auto px-6 py-8 bg-white rounded-b-2xl min-h-[calc(100vh-65px)]">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-3">
           <time className="text-sm text-gray-400 tracking-wide">
             {relativeDate(entry.created_at)} · {format(date, 'EEEE', { locale: zhCN })}
