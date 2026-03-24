@@ -9,6 +9,7 @@ import { zhCN, enUS } from 'date-fns/locale'
 import { JournalEntry } from '@/types'
 import { getEntry, updateEntry, deleteEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { isGuestMode } from '@/lib/guest'
 import { mockEntries } from '@/lib/mock-data'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
@@ -84,7 +85,7 @@ export default function EntryView({ id }: { id: string }) {
   useEffect(() => {
     if (authLoading) return
 
-    if (isConfigured && !user) {
+    if (isConfigured && !user && !isGuestMode()) {
       router.replace(`/auth/login?redirect=/entry/${id}`)
       return
     }
@@ -92,7 +93,7 @@ export default function EntryView({ id }: { id: string }) {
     async function load() {
       try {
         setLoadError(null)
-        if (isSupabaseConfigured()) {
+        if (isSupabaseConfigured() && !isGuestMode()) {
           const data = await getEntry(id)
           if (data) {
             setEntry(data)
@@ -135,7 +136,7 @@ export default function EntryView({ id }: { id: string }) {
     const latestContent = editorRef.current ? editorRef.current.getHTML() : editContent
     setSaving(true)
     try {
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && !isGuestMode()) {
         await updateEntry(entry.id, editTitle || t('untitled'), latestContent, editImages)
       } else {
         const saved = localStorage.getItem('moji-entries')
@@ -174,7 +175,7 @@ export default function EntryView({ id }: { id: string }) {
     if (!entry) return
     setDeleting(true)
     try {
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && !isGuestMode()) {
         await deleteEntry(entry.id)
       } else {
         const saved = localStorage.getItem('moji-entries')

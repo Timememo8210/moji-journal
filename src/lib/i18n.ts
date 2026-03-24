@@ -144,6 +144,27 @@ const translations = {
   scanToShare: { zh: '用微信扫一扫分享', en: 'Scan with WeChat to share' },
   shareFrom: { zh: '— 来自墨记 moji.app', en: '— from Moji Journal' },
   shareFailed: { zh: '分享失败', en: 'Share failed' },
+
+  // Landing Page
+  landingTagline: { zh: '用文字，留住每一天', en: 'Capture every day in words' },
+  landingFeature1: { zh: '记录生活', en: 'Record Life' },
+  landingFeature1Desc: { zh: '用文字和照片记录日常点滴', en: 'Capture moments with words and photos' },
+  landingFeature2: { zh: 'AI 配图', en: 'AI Images' },
+  landingFeature2Desc: { zh: '智能生成与内容匹配的配图', en: 'Smart image generation for your entries' },
+  landingFeature3: { zh: '云端同步', en: 'Cloud Sync' },
+  landingFeature3Desc: { zh: '多设备同步，数据永不丢失', en: 'Sync across devices, never lose data' },
+  tryAsGuest: { zh: '以访客身份体验', en: 'Try as Guest' },
+  createAccountCta: { zh: '注册账号', en: 'Create Account' },
+  haveAccountLogin: { zh: '已有账号？登录', en: 'Already have an account? Login' },
+
+  // Guest Mode
+  guestBanner: { zh: '访客模式 · 数据仅保存在本地', en: 'Guest mode · Data saved locally only' },
+  guestBannerCta: { zh: '注册以云端同步', en: 'Sign up to sync' },
+  importLocalEntries: { zh: '发现本地日记，是否导入到云端？', en: 'Local entries found. Import to cloud?' },
+  importEntries: { zh: '导入', en: 'Import' },
+  skipImport: { zh: '跳过', en: 'Skip' },
+  importSuccess: { zh: '导入成功', en: 'Import successful' },
+  importFailed: { zh: '导入失败', en: 'Import failed' },
 } as const
 
 export type TranslationKey = keyof typeof translations

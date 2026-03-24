@@ -8,6 +8,7 @@ import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
 import { createEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { isGuestMode } from '@/lib/guest'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
@@ -31,7 +32,7 @@ export default function NewEntry() {
   const editorRef = useRef<any>(null)
 
   useEffect(() => {
-    if (!authLoading && isConfigured && !user) {
+    if (!authLoading && isConfigured && !user && !isGuestMode()) {
       router.replace('/auth/login?redirect=/entry/new')
     }
   }, [authLoading, isConfigured, user, router])
@@ -152,7 +153,7 @@ export default function NewEntry() {
     setSaving(true)
 
     try {
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && !isGuestMode()) {
         await createEntry(title || t('untitled'), latestContent, images)
       } else {
         const now = new Date().toISOString()
@@ -186,7 +187,7 @@ export default function NewEntry() {
     }
   }
 
-  if (authLoading || (isConfigured && !user)) {
+  if (authLoading || (isConfigured && !user && !isGuestMode())) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">

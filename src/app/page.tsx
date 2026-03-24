@@ -12,10 +12,14 @@ import { format } from 'date-fns'
 import { zhCN, enUS } from 'date-fns/locale'
 import EntryCard from '@/components/EntryCard'
 import UserMenu from '@/components/UserMenu'
+import LandingPage from '@/components/LandingPage'
+import GuestBanner from '@/components/GuestBanner'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
 import { SkeletonList } from '@/components/Skeleton'
+import { isGuestMode, getGuestEntries } from '@/lib/guest'
+import ImportDialog from '@/components/ImportDialog'
 
 export default function Timeline() {
   const router = useRouter()
@@ -30,25 +34,39 @@ export default function Timeline() {
   const { user, isConfigured, loading: authLoading } = useAuth()
   const { t, locale } = useI18n()
   const { showToast } = useToast()
+  const [showImport, setShowImport] = useState<JournalEntry[] | null>(null)
   const monthRefs = useRef<Record<string, HTMLElement | null>>({})
   const dateFnsLocale = locale === 'zh' ? zhCN : enUS
+
+  const guestMode = typeof window !== 'undefined' && isGuestMode()
 
   useEffect(() => {
     if (authLoading) return
 
-    // Redirect to login if Supabase is configured but user is not logged in
-    if (isConfigured && !user) {
-      router.replace('/auth/login?redirect=/')
+    // Show landing page if Supabase is configured, user not logged in, and not guest mode
+    if (isConfigured && !user && !isGuestMode()) {
+      setMounted(true)
       return
     }
 
     async function loadEntries() {
       try {
         setLoadError(null)
-        if (isConfigured) {
+        if (isConfigured && user) {
           const data = await getEntries()
           setEntries(data)
+          // Check for guest entries to import
+          const guestData = getGuestEntries()
+          if (guestData) {
+            try {
+              const parsed = JSON.parse(guestData)
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setShowImport(parsed)
+              }
+            } catch { /* ignore */ }
+          }
         } else {
+          // Guest mode or no Supabase: use localStorage
           const saved = localStorage.getItem('moji-entries')
           if (saved) {
             setEntries(JSON.parse(saved))
@@ -96,7 +114,7 @@ export default function Timeline() {
   const handleDelete = async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
     try {
-      if (isSupabaseConfigured()) {
+      if (isSupabaseConfigured() && !isGuestMode()) {
         await deleteEntry(id)
       } else {
         const updated = entries.filter((e) => e.id !== id)
@@ -156,6 +174,11 @@ export default function Timeline() {
   }
   const formatEntriesCount = (n: number) => locale === 'zh' ? `${n} 篇` : `${n}`
 
+  // Show landing page for unauthenticated users when Supabase is configured
+  if (mounted && isConfigured && !user && !guestMode) {
+    return <LandingPage />
+  }
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -181,6 +204,9 @@ export default function Timeline() {
       animate={{ opacity: 1 }}
       className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-bottom"
     >
+      {/* Guest Banner */}
+      <GuestBanner />
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-journal mx-auto px-6 py-4 flex items-center justify-between">
@@ -413,6 +439,17 @@ export default function Timeline() {
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </Link>
+      )}
+
+      {/* Import guest entries dialog */}
+      {showImport && (
+        <ImportDialog
+          entries={showImport}
+          onDone={() => {
+            setShowImport(null)
+            window.location.reload()
+          }}
+        />
       )}
     </motion.div>
   )

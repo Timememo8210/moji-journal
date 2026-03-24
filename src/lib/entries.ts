@@ -1,16 +1,37 @@
 import { JournalEntry } from '@/types'
 import { createBrowserSupabaseClient, isSupabaseConfigured } from './supabase'
 import { mockEntries } from './mock-data'
+import { isGuestMode } from './guest'
 
-// In-memory store for guest/mock mode
-let localEntries = [...mockEntries]
+// In-memory store for guest/mock mode — hydrate from localStorage if available
+let localEntries: JournalEntry[] = (() => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('moji-entries')
+    if (saved) {
+      try { return JSON.parse(saved) } catch { /* fall through */ }
+    }
+  }
+  return [...mockEntries]
+})()
+
+// Check if we should use local storage (no Supabase OR guest mode)
+function useLocalStorage(): boolean {
+  return !isSupabaseConfigured() || isGuestMode()
+}
+
+// Persist local entries to localStorage
+function persistLocal() {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('moji-entries', JSON.stringify(localEntries))
+  }
+}
 
 function getClient() {
   return createBrowserSupabaseClient()
 }
 
 export async function getEntries(): Promise<JournalEntry[]> {
-  if (!isSupabaseConfigured()) {
+  if (useLocalStorage()) {
     return localEntries.sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
@@ -46,7 +67,7 @@ export async function getEntries(): Promise<JournalEntry[]> {
 }
 
 export async function getEntry(id: string): Promise<JournalEntry | null> {
-  if (!isSupabaseConfigured()) {
+  if (useLocalStorage()) {
     return localEntries.find((e) => e.id === id) || null
   }
 
@@ -80,7 +101,7 @@ export async function createEntry(
 ): Promise<JournalEntry> {
   const now = new Date().toISOString()
 
-  if (!isSupabaseConfigured()) {
+  if (useLocalStorage()) {
     const newEntry: JournalEntry = {
       id: Date.now().toString(),
       title,
@@ -98,6 +119,7 @@ export async function createEntry(
     }
     newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
     localEntries.unshift(newEntry)
+    persistLocal()
     return newEntry
   }
 
@@ -137,7 +159,7 @@ export async function updateEntry(
 ): Promise<JournalEntry> {
   const now = new Date().toISOString()
 
-  if (!isSupabaseConfigured()) {
+  if (useLocalStorage()) {
     const idx = localEntries.findIndex((e) => e.id === id)
     if (idx === -1) throw new Error('日记不存在')
     localEntries[idx] = {
@@ -154,6 +176,7 @@ export async function updateEntry(
         created_at: now,
       })),
     }
+    persistLocal()
     return localEntries[idx]
   }
 
@@ -186,8 +209,9 @@ export async function updateEntry(
 }
 
 export async function deleteEntry(id: string): Promise<void> {
-  if (!isSupabaseConfigured()) {
+  if (useLocalStorage()) {
     localEntries = localEntries.filter((e) => e.id !== id)
+    persistLocal()
     return
   }
 
