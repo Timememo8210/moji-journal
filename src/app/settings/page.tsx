@@ -103,7 +103,7 @@ export default function SettingsPage() {
         entries = saved ? JSON.parse(saved) : []
       }
       if (entries.length === 0) {
-        showToast(locale === 'zh' ? '没有日记可导出' : 'No entries to export', 'error')
+        showToast(t('noEntriesToExport'), 'error')
         return
       }
       setPrintEntries(entries)
@@ -199,7 +199,7 @@ export default function SettingsPage() {
                     <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
+                      className="flex-1 px-3 py-2 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
                       autoFocus
                     />
                     <button
@@ -238,14 +238,14 @@ export default function SettingsPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder={t('newPassword')}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
                     />
                     <input
                       type="password"
                       value={confirmPwd}
                       onChange={(e) => setConfirmPwd(e.target.value)}
                       placeholder={t('confirmPassword')}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
+                      className="w-full px-3 py-2 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
                     />
                     <div className="flex items-center gap-2">
                       <button
@@ -331,7 +331,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <span className="block text-lg mb-2" style={opt.style}>
-                  今天是美好的一天
+                  {t('fontPreviewText')}
                 </span>
                 <span className="block text-xs">{opt.label}</span>
                 {font === opt.value && (
@@ -393,7 +393,7 @@ export default function SettingsPage() {
                   type="time"
                   value={reminderTime}
                   onChange={(e) => handleReminderTimeChange(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
+                  className="px-3 py-2 min-h-[44px] rounded-lg border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-sm focus:outline-none focus:border-gray-400"
                 />
               </div>
             )}

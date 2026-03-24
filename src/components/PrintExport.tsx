@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import { JournalEntry } from '@/types'
 import { format } from 'date-fns'
 import { zhCN, enUS } from 'date-fns/locale'
+import { t as translate, Locale } from '@/lib/i18n'
 
 interface PrintExportProps {
   entries: JournalEntry[]
@@ -16,6 +16,7 @@ export function triggerPrint() {
 }
 
 export default function PrintExport({ entries, locale, userName }: PrintExportProps) {
+  const t = (key: Parameters<typeof translate>[0]) => translate(key, locale as Locale)
   const dateFnsLocale = locale === 'zh' ? zhCN : enUS
   const sortedEntries = [...entries].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -104,7 +105,7 @@ export default function PrintExport({ entries, locale, userName }: PrintExportPr
               marginBottom: '8px',
               color: '#1a1a1a',
             }}>
-              墨记
+              {t('printCoverTitle')}
             </h1>
             <p style={{
               fontSize: '18px',
@@ -112,7 +113,7 @@ export default function PrintExport({ entries, locale, userName }: PrintExportPr
               letterSpacing: '4px',
               marginBottom: '80px',
             }}>
-              M O J I
+              {t('printCoverSubtitle')}
             </p>
             <div style={{
               width: '40px',
@@ -141,8 +142,8 @@ export default function PrintExport({ entries, locale, userName }: PrintExportPr
               color: '#999',
             }}>
               {locale === 'zh'
-                ? `共 ${sortedEntries.length} 篇日记`
-                : `${sortedEntries.length} entries`}
+                ? `共 ${sortedEntries.length} ${t('printTotalEntries')}`
+                : `${sortedEntries.length} ${t('printTotalEntries')}`}
             </p>
           </div>
         </div>
@@ -158,7 +159,7 @@ export default function PrintExport({ entries, locale, userName }: PrintExportPr
             color: '#1a1a1a',
             letterSpacing: '2px',
           }}>
-            {locale === 'zh' ? '目录' : 'Contents'}
+            {t('printTOC')}
           </h2>
           <div style={{ lineHeight: '2.2' }}>
             {sortedEntries.map((entry, i) => {
@@ -277,7 +278,7 @@ export default function PrintExport({ entries, locale, userName }: PrintExportPr
           fontFamily: '"Songti SC", "STSong", Georgia, "Noto Serif SC", serif',
         }}>
           <p style={{ fontSize: '12px', color: '#bbb', letterSpacing: '2px' }}>
-            墨记 Moji
+            {t('printFooter')}
           </p>
         </div>
       </div>

@@ -50,7 +50,7 @@ export default function EntryCard({
             )}
           </div>
 
-          <h3 className="text-lg font-medium dark:text-white mb-1.5 group-hover:text-accent-gold transition-colors">
+          <h3 className="text-lg font-medium dark:text-white mb-1.5 group-hover:text-accent-gold transition-colors line-clamp-2 break-words">
             {entry.title}
           </h3>
 
@@ -82,7 +82,7 @@ export default function EntryCard({
                 e.stopPropagation()
                 setShowConfirm(true)
               }}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 backdrop-blur text-white opacity-0 group-hover:opacity-100 md:opacity-0 transition-opacity flex items-center justify-center hover:bg-black/40"
+              className="absolute top-2 right-2 w-11 h-11 rounded-full bg-black/20 backdrop-blur text-white opacity-0 group-hover:opacity-100 md:opacity-0 transition-opacity flex items-center justify-center hover:bg-black/40"
               style={{ opacity: showConfirm ? 1 : undefined }}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

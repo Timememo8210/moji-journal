@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { signIn } from '@/lib/auth'
 import { useI18n } from '@/contexts/I18nContext'
+import { enterGuestMode } from '@/lib/guest'
 import { Suspense } from 'react'
 
 function LoginForm() {
@@ -125,9 +126,13 @@ function LoginForm() {
         </p>
 
         <p className="text-center mt-4">
-          <Link href="/" className="text-zinc-600 text-xs hover:text-zinc-400 transition-colors">
+          <button
+            type="button"
+            onClick={() => { enterGuestMode(); router.push('/') }}
+            className="text-zinc-600 text-xs hover:text-zinc-400 transition-colors"
+          >
             {t('guestMode')}
-          </Link>
+          </button>
         </p>
       </motion.div>
     </div>

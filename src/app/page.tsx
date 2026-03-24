@@ -108,12 +108,7 @@ export default function Timeline() {
   const handleDelete = async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
     try {
-      if (isSupabaseConfigured() && !isGuestMode()) {
-        await deleteEntry(id)
-      } else {
-        const updated = entries.filter((e) => e.id !== id)
-        localStorage.setItem('moji-entries', JSON.stringify(updated))
-      }
+      await deleteEntry(id)
       showToast(t('deleted'))
     } catch {
       showToast(t('deleteFailed'), 'error')

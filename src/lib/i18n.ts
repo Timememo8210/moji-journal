@@ -190,6 +190,16 @@ const translations = {
   uploadFailed: { zh: '上传失败，已保存为本地图片', en: 'Upload failed, saved locally' },
   uploadProgress: { zh: '上传中', en: 'Uploading' },
 
+  // Print / PDF Export
+  printCoverTitle: { zh: '墨记', en: 'Moji' },
+  printCoverSubtitle: { zh: 'M O J I', en: 'M O J I' },
+  printTotalEntries: { zh: '篇日记', en: 'entries' },
+  printTOC: { zh: '目录', en: 'Contents' },
+  printFooter: { zh: '墨记 Moji', en: 'Moji Journal' },
+  fontPreviewText: { zh: '今天是美好的一天', en: 'A beautiful day' },
+  noEntriesToExport: { zh: '没有日记可导出', en: 'No entries to export' },
+  twitter: { zh: 'Twitter/X', en: 'Twitter/X' },
+
   // Daily Reminder
   dailyReminder: { zh: '每日提醒', en: 'Daily Reminder' },
   dailyReminderDesc: { zh: '在设定时间提醒你写日记', en: 'Remind you to write at a set time' },

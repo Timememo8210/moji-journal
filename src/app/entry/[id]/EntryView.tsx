@@ -10,7 +10,6 @@ import { JournalEntry } from '@/types'
 import { getEntry, updateEntry, deleteEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { isGuestMode } from '@/lib/guest'
-import { mockEntries } from '@/lib/mock-data'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useToast } from '@/components/Toast'
@@ -96,19 +95,11 @@ export default function EntryView({ id }: { id: string }) {
     async function load() {
       try {
         setLoadError(null)
-        if (isSupabaseConfigured() && !isGuestMode()) {
-          const data = await getEntry(id)
-          if (data) {
-            setEntry(data)
-          } else {
-            setNotFound(true)
-          }
+        const data = await getEntry(id)
+        if (data) {
+          setEntry(data)
         } else {
-          const saved = localStorage.getItem('moji-entries')
-          const entries: JournalEntry[] = saved ? JSON.parse(saved) : mockEntries
-          const found = entries.find((e) => e.id === id)
-          setEntry(found || null)
-          if (!found) setNotFound(true)
+          setNotFound(true)
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : t('loadFailed')
@@ -146,31 +137,7 @@ export default function EntryView({ id }: { id: string }) {
         finalImages = await uploadImages(editImages)
       }
 
-      if (isSupabaseConfigured() && !isGuestMode()) {
-        await updateEntry(entry.id, editTitle || t('untitled'), latestContent, finalImages, editMood || undefined)
-      } else {
-        const saved = localStorage.getItem('moji-entries')
-        const entries: JournalEntry[] = saved ? JSON.parse(saved) : []
-        const idx = entries.findIndex(e => e.id === entry.id)
-        if (idx !== -1) {
-          entries[idx] = {
-            ...entries[idx],
-            title: editTitle || t('untitled'),
-            content: latestContent,
-            mood: editMood || undefined,
-            updated_at: new Date().toISOString(),
-            media: editImages.map((url, i) => ({
-              id: `m-${Date.now()}-${i}`,
-              entry_id: entry.id,
-              type: 'image' as const,
-              url,
-              position: i,
-              created_at: entries[idx].created_at,
-            })),
-          }
-          localStorage.setItem('moji-entries', JSON.stringify(entries))
-        }
-      }
+      await updateEntry(entry.id, editTitle || t('untitled'), latestContent, finalImages, editMood || undefined)
       const updated = await getEntry(id)
       if (updated) setEntry(updated)
       setEditing(false)
@@ -186,13 +153,7 @@ export default function EntryView({ id }: { id: string }) {
     if (!entry) return
     setDeleting(true)
     try {
-      if (isSupabaseConfigured() && !isGuestMode()) {
-        await deleteEntry(entry.id)
-      } else {
-        const saved = localStorage.getItem('moji-entries')
-        const entries: JournalEntry[] = saved ? JSON.parse(saved) : []
-        localStorage.setItem('moji-entries', JSON.stringify(entries.filter(e => e.id !== entry.id)))
-      }
+      await deleteEntry(entry.id)
       showToast(t('deleted'))
       router.push('/')
     } catch (err) {
@@ -426,7 +387,7 @@ export default function EntryView({ id }: { id: string }) {
                     </button>
                     <button onClick={handleShareTwitter} className="w-full px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-3">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12.6 4.8c-.4.2-.8.3-1.3.3.5-.3.8-.7 1-1.3-.4.3-.9.5-1.4.6a2.3 2.3 0 00-3.9 2.1A6.5 6.5 0 012.2 4a2.3 2.3 0 00.7 3.1c-.4 0-.7-.1-1-.3a2.3 2.3 0 001.8 2.3c-.3.1-.7.1-1 0a2.3 2.3 0 002.1 1.6A4.6 4.6 0 012 12a6.5 6.5 0 003.5 1c4.2 0 6.5-3.5 6.5-6.5v-.3c.4-.3.8-.7 1.1-1.2-.4.2-.8.3-1.3.4.5-.3.9-.7 1-1.3l-.2.7z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/></svg>
-                      Twitter/X
+                      {t('twitter')}
                     </button>
                   </motion.div>
                 </>
@@ -492,7 +453,7 @@ export default function EntryView({ id }: { id: string }) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="text-2xl font-semibold mb-8 tracking-tight dark:text-white"
+          className="text-2xl font-semibold mb-8 tracking-tight dark:text-white break-words"
         >
           {entry.title}
         </motion.h1>

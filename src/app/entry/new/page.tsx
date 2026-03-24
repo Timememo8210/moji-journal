@@ -4,8 +4,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
-import { JournalEntry } from '@/types'
-import { mockEntries } from '@/lib/mock-data'
 import { createEntry } from '@/lib/entries'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { isGuestMode } from '@/lib/guest'
@@ -197,32 +195,7 @@ export default function NewEntry() {
         setUploadProgress('')
       }
 
-      if (isSupabaseConfigured() && !isGuestMode()) {
-        await createEntry(title || t('untitled'), latestContent, finalImages, mood || undefined)
-      } else {
-        const now = new Date().toISOString()
-        const newEntry: JournalEntry = {
-          id: Date.now().toString(),
-          title: title || t('untitled'),
-          content: latestContent,
-          mood: mood || undefined,
-          created_at: now,
-          updated_at: now,
-          media: images.map((url, i) => ({
-            id: `m-${Date.now()}-${i}`,
-            entry_id: '',
-            type: 'image' as const,
-            url,
-            position: i,
-            created_at: now,
-          })),
-        }
-        newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
-        const saved = localStorage.getItem('moji-entries')
-        const entries: JournalEntry[] = saved ? JSON.parse(saved) : [...mockEntries]
-        entries.unshift(newEntry)
-        localStorage.setItem('moji-entries', JSON.stringify(entries))
-      }
+      await createEntry(title || t('untitled'), latestContent, finalImages, mood || undefined)
       setHasUnsavedChanges(false)
       showToast(t('entrySaved'))
       router.push('/')
