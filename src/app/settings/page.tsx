@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { useTheme, Theme } from '@/contexts/ThemeContext'
+import { useFont, FontChoice } from '@/contexts/FontContext'
 import { useToast } from '@/components/Toast'
 import { createBrowserSupabaseClient } from '@/lib/supabase'
 import { signOut } from '@/lib/auth'
@@ -20,6 +21,7 @@ export default function SettingsPage() {
   const { user, isConfigured } = useAuth()
   const { locale, setLocale, t } = useI18n()
   const { theme, setTheme } = useTheme()
+  const { font, setFont } = useFont()
   const { showToast } = useToast()
 
   const [editingName, setEditingName] = useState(false)
@@ -109,7 +111,7 @@ export default function SettingsPage() {
 
   const handleClearCache = () => {
     if (!confirm(t('clearCacheConfirm'))) return
-    const keysToKeep = ['moji-lang', 'moji-theme']
+    const keysToKeep = ['moji-lang', 'moji-theme', 'moji-font']
     const saved: Record<string, string> = {}
     keysToKeep.forEach((k) => {
       const v = localStorage.getItem(k)
@@ -277,6 +279,39 @@ export default function SettingsPage() {
                 }`}
               >
                 {lang === 'zh' ? '中文' : 'English'}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        {/* Font */}
+        <Section title={t('font')}>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              { value: 'default' as FontChoice, label: t('fontDefault'), style: {} },
+              { value: 'songti' as FontChoice, label: t('fontSongti'), style: { fontFamily: '"Songti SC", "SimSun", "Noto Serif SC", STSong, serif' } },
+              { value: 'kaiti' as FontChoice, label: t('fontKaiti'), style: { fontFamily: '"Kaiti SC", "KaiTi", "Ma Shan Zheng", STKaiti, cursive' } },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFont(opt.value)}
+                className={`relative py-4 px-3 rounded-xl text-sm font-medium transition-all ${
+                  font === opt.value
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 ring-2 ring-gray-900 dark:ring-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span className="block text-lg mb-2" style={opt.style}>
+                  今天是美好的一天
+                </span>
+                <span className="block text-xs">{opt.label}</span>
+                {font === opt.value && (
+                  <span className="absolute top-2 right-2">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
               </button>
             ))}
           </div>

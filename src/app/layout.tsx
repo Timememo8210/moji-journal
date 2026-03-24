@@ -5,6 +5,7 @@ import { ServiceWorkerRegistrar } from './sw-register'
 import { ToastProvider } from '@/components/Toast'
 import { I18nProvider } from '@/contexts/I18nContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { FontProvider } from '@/contexts/FontContext'
 
 export const metadata: Metadata = {
   title: '墨记 Moji',
@@ -35,13 +36,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="font-sans">
         <ThemeProvider>
-          <I18nProvider>
-            <AuthProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </AuthProvider>
-          </I18nProvider>
+          <FontProvider>
+            <I18nProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </AuthProvider>
+            </I18nProvider>
+          </FontProvider>
         </ThemeProvider>
         <ServiceWorkerRegistrar />
       </body>
