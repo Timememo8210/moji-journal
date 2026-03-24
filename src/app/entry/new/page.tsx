@@ -6,6 +6,8 @@ import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { JournalEntry } from '@/types'
 import { mockEntries } from '@/lib/mock-data'
+import { createEntry } from '@/lib/entries'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 const VoiceInput = dynamic(() => import('@/components/VoiceInput'), { ssr: false })
@@ -110,39 +112,41 @@ export default function NewEntry() {
   }
 
   const handleSave = async () => {
-    // Get latest content directly from editor in case state is stale
     const latestContent = editorRef.current ? editorRef.current.getHTML() : content
     if (!title.trim() && !latestContent.trim()) return
     setSaving(true)
 
     try {
-      const now = new Date().toISOString()
-      const newEntry: JournalEntry = {
-        id: Date.now().toString(),
-        title: title || '无题',
-        content: latestContent,
-        created_at: now,
-        updated_at: now,
-        media: images.map((url, i) => ({
-          id: `m-${Date.now()}-${i}`,
-          entry_id: '',
-          type: 'image' as const,
-          url,
-          position: i,
+      if (isSupabaseConfigured()) {
+        // Save to Supabase (user_id set automatically via trigger)
+        await createEntry(title || '无题', latestContent, images)
+      } else {
+        // Fallback: localStorage
+        const now = new Date().toISOString()
+        const newEntry: JournalEntry = {
+          id: Date.now().toString(),
+          title: title || '无题',
+          content: latestContent,
           created_at: now,
-        })),
+          updated_at: now,
+          media: images.map((url, i) => ({
+            id: `m-${Date.now()}-${i}`,
+            entry_id: '',
+            type: 'image' as const,
+            url,
+            position: i,
+            created_at: now,
+          })),
+        }
+        newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
+        const saved = localStorage.getItem('moji-entries')
+        const entries: JournalEntry[] = saved ? JSON.parse(saved) : [...mockEntries]
+        entries.unshift(newEntry)
+        localStorage.setItem('moji-entries', JSON.stringify(entries))
       }
-      newEntry.media.forEach((m) => (m.entry_id = newEntry.id))
-
-      // Save to localStorage
-      const saved = localStorage.getItem('moji-entries')
-      const entries: JournalEntry[] = saved ? JSON.parse(saved) : [...mockEntries]
-      entries.unshift(newEntry)
-      localStorage.setItem('moji-entries', JSON.stringify(entries))
-
       router.push('/')
     } catch (err) {
-      alert('保存失败: ' + (err instanceof Error ? err.message : '存储空间可能已满'))
+      alert('保存失败: ' + (err instanceof Error ? err.message : '未知错误'))
       setSaving(false)
     }
   }
