@@ -1,26 +1,36 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
-const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
 const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
 
-// Bot user ID for API-created entries (sky-bot@moji.ai)
-export const API_BOT_USER_ID = 'baa5318d-c016-4752-bb22-1c3c8864f2fb'
+// Bot user for API access (email confirmed via admin API)
+const BOT_EMAIL = 'sky-bot@moji.ai'
+const BOT_PASSWORD = 'MojiBot2026!Secure'
 
-let _serverClient: SupabaseClient | null = null
+let _client: SupabaseClient | null = null
+let _authed = false
 
-/**
- * Server-side Supabase client using service_role key (bypasses RLS).
- */
 export function createServerSupabaseClient(): SupabaseClient {
-  if (!url) throw new Error('Supabase URL not configured')
-  const key = serviceKey || anonKey
-  if (!key) throw new Error('Supabase keys not configured')
-
-  if (!_serverClient) {
-    _serverClient = createClient(url, key, {
+  if (!url || !anonKey) throw new Error('Supabase not configured')
+  if (!_client) {
+    _client = createClient(url, anonKey, {
       auth: { persistSession: false },
     })
   }
-  return _serverClient
+  return _client
+}
+
+/**
+ * Sign in as the bot user. Must call before any DB operations.
+ * The bot user's auth.uid() will be used by the RLS trigger.
+ */
+export async function ensureBotAuth(): Promise<void> {
+  if (_authed) return
+  const client = createServerSupabaseClient()
+  const { error } = await client.auth.signInWithPassword({
+    email: BOT_EMAIL,
+    password: BOT_PASSWORD,
+  })
+  if (error) throw new Error(`Bot auth failed: ${error.message}`)
+  _authed = true
 }

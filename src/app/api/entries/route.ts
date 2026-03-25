@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, API_BOT_USER_ID } from '@/lib/supabase-server'
+import { createServerSupabaseClient, ensureBotAuth } from '@/lib/supabase-server'
 
 const API_KEY = process.env.MOJI_API_KEY || ''
 
 function checkAuth(req: NextRequest): boolean {
   if (!API_KEY) return false
-  const auth = req.headers.get('authorization') || ''
-  return auth === `Bearer ${API_KEY}`
+  return req.headers.get('authorization') === `Bearer ${API_KEY}`
 }
 
-function unauthorized() {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-}
-
-// GET /api/entries — list entries
+// GET /api/entries
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return unauthorized()
+  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  await ensureBotAuth()
   const supabase = createServerSupabaseClient()
   const { searchParams } = new URL(req.url)
   const limit = parseInt(searchParams.get('limit') || '20')
@@ -30,38 +26,28 @@ export async function GET(req: NextRequest) {
     .range(offset, offset + limit - 1)
 
   if (date) {
-    const start = `${date}T00:00:00.000Z`
-    const end = `${date}T23:59:59.999Z`
-    query = query.gte('created_at', start).lte('created_at', end)
+    query = query.gte('created_at', `${date}T00:00:00.000Z`).lte('created_at', `${date}T23:59:59.999Z`)
   }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
   return NextResponse.json({ entries: data, count: data?.length ?? 0 })
 }
 
-// POST /api/entries — create entry
+// POST /api/entries
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return unauthorized()
+  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
-  const { title, content, mood, images, user_id } = body
-
+  const { title, content, mood, images } = await req.json()
   if (!title || !content) {
-    return NextResponse.json({ error: 'title and content are required' }, { status: 400 })
+    return NextResponse.json({ error: 'title and content required' }, { status: 400 })
   }
 
+  await ensureBotAuth()
   const supabase = createServerSupabaseClient()
   const now = new Date().toISOString()
 
-  const insertData: Record<string, unknown> = {
-    title,
-    content,
-    user_id: user_id || API_BOT_USER_ID,
-    created_at: now,
-    updated_at: now,
-  }
+  const insertData: Record<string, unknown> = { title, content, created_at: now, updated_at: now }
   if (mood) insertData.mood = mood
 
   const { data: entry, error } = await supabase
@@ -72,13 +58,10 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  if (images && images.length > 0 && entry) {
+  if (images?.length && entry) {
     await supabase.from('media').insert(
       images.map((url: string, i: number) => ({
-        entry_id: entry.id,
-        type: 'image',
-        url,
-        position: i,
+        entry_id: entry.id, type: 'image', url, position: i,
       }))
     )
   }
