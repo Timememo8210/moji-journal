@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, ensureBotAuth } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 const API_KEY = process.env.MOJI_API_KEY || ''
 
@@ -12,8 +12,7 @@ function checkAuth(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await ensureBotAuth()
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { searchParams } = new URL(req.url)
   const limit = parseInt(searchParams.get('limit') || '20')
   const offset = parseInt(searchParams.get('offset') || '0')
@@ -43,8 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'title and content required' }, { status: 400 })
   }
 
-  await ensureBotAuth()
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const now = new Date().toISOString()
 
   const insertData: Record<string, unknown> = { title, content, created_at: now, updated_at: now }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, ensureBotAuth } from '@/lib/supabase-server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 const API_KEY = process.env.MOJI_API_KEY || ''
 
@@ -10,8 +10,7 @@ function checkAuth(req: NextRequest): boolean {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await ensureBotAuth()
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase.from('entries').select('*, media(*)').eq('id', params.id).single()
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
   return NextResponse.json({ entry: data })
@@ -20,8 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { title, content, mood } = await req.json()
-  await ensureBotAuth()
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (title !== undefined) updateData.title = title
   if (content !== undefined) updateData.content = content
@@ -33,8 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  await ensureBotAuth()
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   await supabase.from('media').delete().eq('entry_id', params.id)
   const { error } = await supabase.from('entries').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
