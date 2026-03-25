@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ entry: data })
 }
 
-// PATCH /api/entries/[id] — update
+// PATCH /api/entries/[id]
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   if (!checkAuth(req)) return unauthorized()
 

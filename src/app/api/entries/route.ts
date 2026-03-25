@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, API_BOT_USER_ID } from '@/lib/supabase-server'
 
-// Simple API key auth — set MOJI_API_KEY env var in Vercel
 const API_KEY = process.env.MOJI_API_KEY || ''
 
 function checkAuth(req: NextRequest): boolean {
@@ -22,7 +21,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const limit = parseInt(searchParams.get('limit') || '20')
   const offset = parseInt(searchParams.get('offset') || '0')
-  const date = searchParams.get('date') // YYYY-MM-DD filter
+  const date = searchParams.get('date')
 
   let query = supabase
     .from('entries')
@@ -47,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (!checkAuth(req)) return unauthorized()
 
   const body = await req.json()
-  const { title, content, mood, images } = body
+  const { title, content, mood, images, user_id } = body
 
   if (!title || !content) {
     return NextResponse.json({ error: 'title and content are required' }, { status: 400 })
@@ -59,6 +58,7 @@ export async function POST(req: NextRequest) {
   const insertData: Record<string, unknown> = {
     title,
     content,
+    user_id: user_id || API_BOT_USER_ID,
     created_at: now,
     updated_at: now,
   }
