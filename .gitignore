@@ -4,3 +4,6 @@ node_modules
 .env.local
 .vercel
 .env*.local
+.env.prod
+.env.production
+.env.local
