@@ -36,6 +36,11 @@ export default function Timeline() {
   const [showMonthNav, setShowMonthNav] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [pullY, setPullY] = useState(0)
+  const pullStartY = useRef(0)
+  const isPulling = useRef(false)
+  const PULL_THRESHOLD = 70
   const { user, isConfigured, loading: authLoading } = useAuth()
   const { t, locale } = useI18n()
   const { showToast } = useToast()
@@ -45,52 +50,82 @@ export default function Timeline() {
 
   const guestMode = typeof window !== 'undefined' && isGuestMode()
 
+  const loadEntries = useCallback(async () => {
+    try {
+      setLoadError(null)
+      if (isConfigured && user) {
+        const data = await getEntries()
+        setEntries(data)
+        const guestData = getGuestEntries()
+        if (guestData) {
+          try {
+            const parsed = JSON.parse(guestData)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setShowImport(parsed)
+            }
+          } catch { /* ignore */ }
+        }
+      } else {
+        const saved = localStorage.getItem('moji-entries')
+        if (saved) {
+          setEntries(JSON.parse(saved))
+        } else {
+          setEntries(
+            [...mockEntries].sort(
+              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+          )
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('loadFailed')
+      setLoadError(navigator.onLine ? message : t('networkError'))
+    }
+  }, [isConfigured, user, t])
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    await loadEntries()
+    setRefreshing(false)
+    showToast('已刷新', 'success')
+  }, [refreshing, loadEntries, showToast])
+
+  // Pull-to-refresh touch handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      pullStartY.current = e.touches[0].clientY
+      isPulling.current = true
+    }
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling.current) return
+    const delta = e.touches[0].clientY - pullStartY.current
+    if (delta > 0 && window.scrollY === 0) {
+      setPullY(Math.min(delta * 0.5, PULL_THRESHOLD + 20))
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(async () => {
+    if (!isPulling.current) return
+    isPulling.current = false
+    if (pullY >= PULL_THRESHOLD) {
+      await handleRefresh()
+    }
+    setPullY(0)
+  }, [pullY, handleRefresh])
+
   useEffect(() => {
     if (authLoading) return
 
-    // Show landing page if Supabase is configured, user not logged in, and not guest mode
     if (isConfigured && !user && !isGuestMode()) {
       setMounted(true)
       return
     }
 
-    async function loadEntries() {
-      try {
-        setLoadError(null)
-        if (isConfigured && user) {
-          const data = await getEntries()
-          setEntries(data)
-          // Check for guest entries to import
-          const guestData = getGuestEntries()
-          if (guestData) {
-            try {
-              const parsed = JSON.parse(guestData)
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setShowImport(parsed)
-              }
-            } catch { /* ignore */ }
-          }
-        } else {
-          // Guest mode or no Supabase: use localStorage
-          const saved = localStorage.getItem('moji-entries')
-          if (saved) {
-            setEntries(JSON.parse(saved))
-          } else {
-            setEntries(
-              [...mockEntries].sort(
-                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              )
-            )
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : t('loadFailed')
-        setLoadError(navigator.onLine ? message : t('networkError'))
-      }
-      setMounted(true)
-    }
-    loadEntries()
-  }, [user, isConfigured, authLoading, router, t])
+    loadEntries().then(() => setMounted(true))
+  }, [user, isConfigured, authLoading, router, loadEntries])
 
   const filteredEntries = useMemo(() => entries.filter((entry) => {
     const date = new Date(entry.created_at)
@@ -192,7 +227,38 @@ export default function Timeline() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-bottom"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
+      {/* Pull-to-refresh indicator */}
+      {pullY > 0 && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pointer-events-none"
+          style={{ height: pullY, background: 'transparent' }}
+        >
+          <div className={`flex items-center gap-2 text-sm transition-all ${pullY >= PULL_THRESHOLD ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400'}`}>
+            <svg
+              className={`w-5 h-5 transition-transform duration-200 ${pullY >= PULL_THRESHOLD ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <span>{pullY >= PULL_THRESHOLD ? '松手刷新' : '下拉刷新'}</span>
+          </div>
+        </div>
+      )}
+      {refreshing && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center py-3">
+          <div className="flex items-center gap-2 text-sm text-blue-500 dark:text-blue-400 bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-md">
+            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>刷新中…</span>
+          </div>
+        </div>
+      )}
+
       {/* Guest Banner */}
       <GuestBanner />
 
@@ -232,6 +298,17 @@ export default function Timeline() {
                 </svg>
               </button>
             )}
+            {/* Refresh button */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 disabled:opacity-40"
+              title="刷新"
+            >
+              <svg className={`w-[18px] h-[18px] ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             <button
               onClick={() => { setShowSearch(!showSearch); setShowCalendar(false); setShowMonthNav(false) }}
               className="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
